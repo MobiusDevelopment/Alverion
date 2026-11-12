@@ -55,6 +55,19 @@ namespace characterSelect
 		slot->SetHorizontalAlignment(HAlign_Fill);
 		slot->SetPadding(FMargin(0.0f, UIStyle::rowSpacing, 0.0f, 0.0f));
 	}
+
+	// How long the server waits before deleting: whole days while a day or more is left, then whole hours, each rounded up so the last hour reads as one rather than none.
+	FText deletionText(int32 seconds)
+	{
+		constexpr int32 hour = 60 * 60;
+		constexpr int32 day = 24 * hour;
+		if (seconds >= day)
+		{
+			return FText::Format(LocalizedText::get(TEXT("charselect.deleting_days")), (seconds + day - 1) / day);
+		}
+
+		return FText::Format(LocalizedText::get(TEXT("charselect.deleting_hours")), FMath::Max(1, (seconds + hour - 1) / hour));
+	}
 }
 
 TSharedRef<SWidget> UCharacterSelectWidget::RebuildWidget()
@@ -122,6 +135,11 @@ TSharedRef<SWidget> UCharacterSelectWidget::RebuildWidget()
 		nameRow->AddChildToHorizontalBox(nextBox)->SetVerticalAlignment(VAlign_Center);
 
 		_nameColumn->AddChildToVerticalBox(nameRow)->SetHorizontalAlignment(HAlign_Center);
+
+		_deletionLabel = UIStyle::makeLabel(*WidgetTree, FText::GetEmpty(), UIStyle::bodyFontSize, UIStyle::mutedColor);
+		_deletionLabel->SetJustification(ETextJustify::Center);
+		_deletionLabel->SetVisibility(ESlateVisibility::Collapsed);
+		_nameColumn->AddChildToVerticalBox(_deletionLabel)->SetHorizontalAlignment(HAlign_Center);
 
 		_enterButton = UIStyle::frontEndButton(*WidgetTree, LocalizedText::get(TEXT("menu.enter")));
 		_enterButton->OnClicked.AddUniqueDynamic(this, &UCharacterSelectWidget::handleEnterClicked);
@@ -273,6 +291,20 @@ void UCharacterSelectWidget::refresh()
 	else
 	{
 		_nameLabel->SetText(FText::GetEmpty());
+	}
+
+	// A character the server is waiting to delete says how long it has left, and Delete turns into Restore for it.
+	const bool deleting = (shown != nullptr) && (shown->deleteSeconds > 0);
+	if (_deletionLabel != nullptr)
+	{
+		_deletionLabel->SetText(deleting ? characterSelect::deletionText(shown->deleteSeconds) : FText::GetEmpty());
+		_deletionLabel->SetVisibility(deleting ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	UTextBlock* deleteLabel = (_deleteButton != nullptr) ? Cast<UTextBlock>(_deleteButton->GetChildAt(0)) : nullptr;
+	if (deleteLabel != nullptr)
+	{
+		deleteLabel->SetText(LocalizedText::get(deleting ? TEXT("menu.restore") : TEXT("menu.delete")));
 	}
 
 	// The body on its spot is spawned by the front end game mode, which is what can see the level.
@@ -526,10 +558,20 @@ void UCharacterSelectWidget::handleEnterClicked()
 
 void UCharacterSelectWidget::handleDeleteClicked()
 {
-	if (_shownObjectId != 0)
+	if (_shownObjectId == 0)
 	{
-		confirmDelete(_shownObjectId);
+		return;
 	}
+
+	// The flow restores only a character the server is waiting to delete, and taking a deletion back needs no second thought.
+	UGameInstance* gameInstance = GetGameInstance();
+	UServerConnectionSubsystem* network = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	if ((network != nullptr) && network->gameServer().restoreCharacter(_shownObjectId))
+	{
+		return;
+	}
+
+	confirmDelete(_shownObjectId);
 }
 
 void UCharacterSelectWidget::handleServerListClicked()

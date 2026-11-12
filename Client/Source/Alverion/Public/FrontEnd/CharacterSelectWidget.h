@@ -80,6 +80,10 @@ private:
 	UPROPERTY()
 	TObjectPtr<UTextBlock> _nameLabel;
 
+	// Under the name, only while the server is waiting to delete the character.
+	UPROPERTY()
+	TObjectPtr<UTextBlock> _deletionLabel;
+
 	// Beneath the name, and only when there is a character for it to enter the world with.
 	UPROPERTY()
 	TObjectPtr<UVerticalBox> _nameColumn;

@@ -22,6 +22,7 @@
 #include "GameServer/ClientPackets/AuthLogin.h"
 #include "GameServer/ClientPackets/CharacterCreate.h"
 #include "GameServer/ClientPackets/CharacterDelete.h"
+#include "GameServer/ClientPackets/CharacterRestore.h"
 #include "GameServer/ClientPackets/CharacterSelect.h"
 #include "GameServer/ClientPackets/EnterWorld.h"
 #include "GameServer/ClientPackets/RequestHardWareInfo.h"

@@ -108,6 +108,22 @@ bool FGameServerFlow::deleteCharacter(uint32 objectId)
 	return true;
 }
 
+bool FGameServerFlow::restoreCharacter(uint32 objectId)
+{
+	const FCharacterListEntry* character = findCharacter(objectId);
+	if ((_session == nullptr) || (_step != EGameServerStep::CharacterSelect) || (character == nullptr) || (character->deleteSeconds <= 0))
+	{
+		return false;
+	}
+
+	FWriteBuffer buffer;
+	GameServer::writeCharacterRestore(buffer, character->slot);
+	send(buffer);
+
+	setStep(EGameServerStep::RestoreSent);
+	return true;
+}
+
 bool FGameServerFlow::selectCharacter(uint32 objectId)
 {
 	const FCharacterListEntry* character = findCharacter(objectId);

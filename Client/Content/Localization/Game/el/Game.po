@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-12 21:01\n"
-"PO-Revision-Date: 2026-11-12 21:01\n"
+"POT-Creation-Date: 2026-11-12 22:39\n"
+"PO-Revision-Date: 2026-11-12 22:39\n"
 "Language-Team: \n"
 "Language: el\n"
 "MIME-Version: 1.0\n"
@@ -236,6 +236,20 @@ msgstr "Τύπος {0}"
 msgctxt "ST_Game,charcreate.working"
 msgid "Asking the server."
 msgstr "Γίνεται ερώτημα στον διακομιστή."
+
+#. Key:	charselect.deleting_days
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charselect.deleting_days"
+msgid "Deleted in {0} {0}|plural(one=day,other=days)"
+msgstr "Διαγραφή σε {0} {0}|plural(one=ημέρα,other=ημέρες)"
+
+#. Key:	charselect.deleting_hours
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charselect.deleting_hours"
+msgid "Deleted in {0} {0}|plural(one=hour,other=hours)"
+msgstr "Διαγραφή σε {0} {0}|plural(one=ώρα,other=ώρες)"
 
 #. Key:	charselect.exit_game
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -752,8 +766,8 @@ msgstr "Διαγραφή"
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
 msgctxt "ST_Game,menu.delete_confirm"
-msgid "Delete \"{0}\"?\nThis cannot be undone."
-msgstr "Διαγραφή \"{0}\";\nΑυτή η ενέργεια δεν αναιρείται."
+msgid "Delete \"{0}\"?\nIt can be restored until the server removes it."
+msgstr "Διαγραφή του \"{0}\";\nΜπορεί να επαναφερθεί μέχρι να τον αφαιρέσει ο διακομιστής."
 
 #. Key:	menu.enter
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -803,6 +817,13 @@ msgstr "Επιλογές"
 msgctxt "ST_Game,menu.options_title"
 msgid "Options"
 msgstr "Επιλογές"
+
+#. Key:	menu.restore
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,menu.restore"
+msgid "Restore"
+msgstr "Επαναφορά"
 
 #. Key:	menu.yes
 #. SourceLocation:	Localization/StringTables/ST_Game.csv

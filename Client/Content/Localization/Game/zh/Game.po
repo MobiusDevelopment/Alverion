@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-12 21:01\n"
-"PO-Revision-Date: 2026-11-12 21:01\n"
+"POT-Creation-Date: 2026-11-12 22:39\n"
+"PO-Revision-Date: 2026-11-12 22:39\n"
 "Language-Team: \n"
 "Language: zh\n"
 "MIME-Version: 1.0\n"
@@ -236,6 +236,20 @@ msgstr "类型 {0}"
 msgctxt "ST_Game,charcreate.working"
 msgid "Asking the server."
 msgstr "正在请求服务器。"
+
+#. Key:	charselect.deleting_days
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charselect.deleting_days"
+msgid "Deleted in {0} {0}|plural(one=day,other=days)"
+msgstr "{0}天后删除"
+
+#. Key:	charselect.deleting_hours
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charselect.deleting_hours"
+msgid "Deleted in {0} {0}|plural(one=hour,other=hours)"
+msgstr "{0}小时后删除"
 
 #. Key:	charselect.exit_game
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -752,8 +766,8 @@ msgstr "删除"
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
 msgctxt "ST_Game,menu.delete_confirm"
-msgid "Delete \"{0}\"?\nThis cannot be undone."
-msgstr "删除\"{0}\"？\n此操作无法撤销。"
+msgid "Delete \"{0}\"?\nIt can be restored until the server removes it."
+msgstr "删除“{0}”？\n在服务器移除之前可以恢复。"
 
 #. Key:	menu.enter
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -803,6 +817,13 @@ msgstr "设置"
 msgctxt "ST_Game,menu.options_title"
 msgid "Options"
 msgstr "设置"
+
+#. Key:	menu.restore
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,menu.restore"
+msgid "Restore"
+msgstr "恢复"
 
 #. Key:	menu.yes
 #. SourceLocation:	Localization/StringTables/ST_Game.csv

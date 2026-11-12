@@ -20,6 +20,7 @@ enum class EGameServerStep : uint8
 	CharacterSelect,
 	CreateSent,
 	DeleteSent,
+	RestoreSent,
 	SelectSent,
 	Selected,
 	InWorld,
@@ -48,6 +49,9 @@ public:
 
 	bool createCharacter(const FString& name, const FAppearance& appearance);
 	bool deleteCharacter(uint32 objectId);
+
+	/** Takes back a deletion the server is still waiting out. The fresh list it answers with ends the step. */
+	bool restoreCharacter(uint32 objectId);
 	bool selectCharacter(uint32 objectId);
 
 	/** Sends EnterWorld. Every packet after it goes to onWorldPacket. */

@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-12 21:01\n"
-"PO-Revision-Date: 2026-11-12 21:01\n"
+"POT-Creation-Date: 2026-11-12 22:39\n"
+"PO-Revision-Date: 2026-11-12 22:39\n"
 "Language-Team: \n"
 "Language: pt\n"
 "MIME-Version: 1.0\n"
@@ -236,6 +236,20 @@ msgstr "Tipo {0}"
 msgctxt "ST_Game,charcreate.working"
 msgid "Asking the server."
 msgstr "Consultando o servidor."
+
+#. Key:	charselect.deleting_days
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charselect.deleting_days"
+msgid "Deleted in {0} {0}|plural(one=day,other=days)"
+msgstr "Apagado em {0} {0}|plural(one=dia,other=dias)"
+
+#. Key:	charselect.deleting_hours
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charselect.deleting_hours"
+msgid "Deleted in {0} {0}|plural(one=hour,other=hours)"
+msgstr "Apagado em {0} {0}|plural(one=hora,other=horas)"
 
 #. Key:	charselect.exit_game
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -752,8 +766,8 @@ msgstr "Excluir"
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
 msgctxt "ST_Game,menu.delete_confirm"
-msgid "Delete \"{0}\"?\nThis cannot be undone."
-msgstr "Excluir \"{0}\"?\nNão é possível desfazer."
+msgid "Delete \"{0}\"?\nIt can be restored until the server removes it."
+msgstr "Apagar \"{0}\"?\nPode ser restaurado até o servidor o remover."
 
 #. Key:	menu.enter
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -803,6 +817,13 @@ msgstr "Opções"
 msgctxt "ST_Game,menu.options_title"
 msgid "Options"
 msgstr "Opções"
+
+#. Key:	menu.restore
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,menu.restore"
+msgid "Restore"
+msgstr "Restaurar"
 
 #. Key:	menu.yes
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
