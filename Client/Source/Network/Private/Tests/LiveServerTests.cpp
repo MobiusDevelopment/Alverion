@@ -154,7 +154,7 @@ bool FLiveServerRoundTripTest::RunTest(const FString& parameters)
 	worldFlow.onSpawned.BindLambda([&spawns, &townspeople](const Network::FCharacterSpawn& spawn)
 	{
 		spawns++;
-		if (spawn.isNpc && !spawn.attackable && (spawn.kind == Network::ECreatureKind::Normal))
+		if (spawn.isNpc && !spawn.attackable)
 		{
 			townspeople.Add(spawn);
 		}

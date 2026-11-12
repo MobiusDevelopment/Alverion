@@ -25,7 +25,7 @@ public:
 	void walkTo(const FVector& destination);
 	void standAt(const FVector& location, float yaw);
 
-	/** Whether this is a townsperson: a non-player that the server does not let the player attack and that is not a summon or a trap, and so one that can be talked to. */
+	/** Whether this is a townsperson: a non-player that the server does not let the player attack, and so one that can be talked to. */
 	bool isTownsperson() const;
 
 	/** Switches between the walk and the run, which move at different speeds and play different clips. */

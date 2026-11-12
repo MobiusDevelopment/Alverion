@@ -196,14 +196,6 @@ struct NETWORK_API FStatusUpdate
 	TArray<TPair<int32, int32>> attributes;
 };
 
-/** What the creature kind trailer says a creature is, numbered as the server patch numbers it. */
-enum class ECreatureKind : uint8
-{
-	Normal = 0,
-	Summon = 1,
-	Trap = 2
-};
-
 /** Somebody or something coming into view: a player from CharInfo, or a monster or townsperson from NpcInfo. */
 struct NETWORK_API FCharacterSpawn
 {
@@ -224,9 +216,6 @@ struct NETWORK_API FCharacterSpawn
 	bool isNpc = false;
 	int32 npcId = 0;
 	bool attackable = false;
-
-	/** Summons and traps come in the same packet as townspeople, and only the creature kind patch tells them apart. */
-	ECreatureKind kind = ECreatureKind::Normal;
 
 	bool female = false;
 	int32 race = 0;
@@ -261,9 +250,6 @@ inline constexpr int32 protocolRevision = 273;
 
 /** The paperdoll slots CharSelectionInfo and CharInfo list, one int each. */
 inline constexpr int32 paperdollSlots = 26;
-
-/** Marks the creature kind trailer, as the bytes 'A' 'L' 'V' 'K'. */
-inline constexpr int32 creatureKindMagic = 0x4B564C41;
 
 /** Marks the appearance extension, as the bytes 'A' 'L' 'V' '1'. A server without the patch never sends it and ignores it when sent. */
 inline constexpr int32 appearanceMagic = 0x31564C41;

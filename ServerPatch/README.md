@@ -36,23 +36,11 @@ Nothing to patch. The client sends the stock `RequestHardWareInfo` right after `
 with the stock client. Its first field, the one HWID bans and limits key on, is a hash of the
 machine id instead of a MAC address, so one machine always sends the same value.
 
-## Creature kind (`alverion-creature-kind.patch`)
-
-NpcInfo carries townspeople, monsters, summons and traps in one layout, and nothing in it says
-which is which, so the client cannot keep summons and traps from being talked to or attacked as
-townspeople. This second patch marks them. `SummonInfo` and `TrapInfo`, the two writers inside
-`AbstractNpcInfo.java`, append a trailer at the very end of the packet: the int `0x4B564C41` (the
-bytes `ALVK`), then one byte for the kind, 1 for a summon and 2 for a trap. `NpcInfo`, which
-writes townspeople and monsters, and every other packet are untouched, so a client that does not
-know the trailer ignores it and sees what it always saw. Only that one file changes, by eight
-added lines. It applies the same way as the appearance patch, with `<Patch>` naming
-`alverion-creature-kind.patch`, and needs a rebuild and no database change.
-
 ## Applying it
 
 The same patch applies to a standalone High Five server project and to the High Five folder of the
-L2J Mobius repository; `<Patch>` below is the path to `alverion-appearance.patch`, and the same
-two commands apply `alverion-creature-kind.patch`. From the root of a standalone project:
+L2J Mobius repository; `<Patch>` below is the path to `alverion-appearance.patch`. From the root
+of a standalone project:
 
 ```
 git apply -p0 --check <Patch>
@@ -72,15 +60,13 @@ game database (the database installer picks it up with the other game tables).
 ## Running it without applying it
 
 The patched classes can be compiled on their own and put ahead of the stock ones, which is how it
-is tested here without touching the server. Copy the four upstream files, and
-`AbstractNpcInfo.java` for the creature kind patch, into an empty folder, `<Folder>`, at their
-`java/...` paths and run `git apply -p0 --exclude=dist/game/config/Player.ini` on the appearance
-patch and `git apply -p0` on the creature kind patch there; set `DisableCp = True` in the server's
-own `Player.ini` if CP should be off. Then compile from `<Folder>` and start the server with its
-classes first:
+is tested here without touching the server. Copy the four upstream files into an empty folder,
+`<Folder>`, at their `java/...` paths and run `git apply -p0 --exclude=dist/game/config/Player.ini`
+on the patch there; set `DisableCp = True` in the server's own `Player.ini` if CP should be off.
+Then compile from `<Folder>` and start the server with its classes first:
 
 ```
-javac -encoding UTF-8 -nowarn -proc:none -cp "<Server>/bin;<Server>/dist/libs/*" -d classes <the six .java files>
+javac -encoding UTF-8 -nowarn -proc:none -cp "<Server>/bin;<Server>/dist/libs/*" -d classes <the five .java files>
 java -cp "<Folder>/classes;<Server>/bin;<Server>/dist/libs/*" org.l2jmobius.gameserver.GameServer
 ```
 
@@ -88,7 +74,7 @@ The second command runs from `<Server>/dist/game`, with the JVM options in its `
 
 ## Layout of this repository
 
-No server files are kept here, only the two patches; the appearance patch carries the new class
-and the SQL file too. Each patch is the one copy of its change and is edited directly. They add no
-imports and name the new class in full instead, and their context lines are ones both kinds of
-High Five project share, so one patch fits either.
+No server files are kept here, only the patch, which carries the new class and the SQL file
+too. It is the one copy of the change and is edited directly. It adds no imports and names the
+new class in full instead, and its context lines are ones both kinds of High Five project share,
+so one patch fits either.

@@ -9,7 +9,6 @@
 #include "GameServer/ServerPackets/UserInfo.h"
 #include "GameServer/ServerPackets/StatusUpdate.h"
 #include "GameServer/ServerPackets/CharInfo.h"
-#include "GameServer/ServerPackets/CreatureKindTrailer.h"
 #include "GameServer/ServerPackets/NpcInfo.h"
 #include "GameServer/ServerPackets/ObjectPlace.h"
 #include "GameServer/ServerPackets/CreatureSay.h"

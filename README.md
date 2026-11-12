@@ -20,7 +20,7 @@ Unreal Engine 5 client for L2J Mobius.
 | Folder | What |
 | --- | --- |
 | `Client` | The Unreal Engine 5.8 project. `Network` speaks the server protocol, `Alverion` is the game. |
-| `ServerPatch` | Patches for `L2J_Mobius`: one stores each character's appearance block, the other marks summons and traps. See its README. |
+| `ServerPatch` | A patch for `L2J_Mobius` that stores each character's appearance block. See its README. |
 
 ## MetaHumans
 
@@ -50,7 +50,7 @@ Extract the zip so that the clips land in `Client/Content/Characters/Animations/
 
 ## Running it
 
-1. Run an L2J Mobius login server and game server, with both patches applied and `character_appearance.sql` imported.
+1. Run an L2J Mobius login server and game server, with the patch applied and `character_appearance.sql` imported.
 2. Download the MetaHumans, equipment and animations from their respective sections.
 3. Build `Client/Alverion.uproject` with Unreal Engine 5.8 and run it.
 4. Log in. A server with `AutoCreateAccounts` on makes the account the first time.

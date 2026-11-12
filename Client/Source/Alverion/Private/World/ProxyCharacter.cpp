@@ -50,8 +50,7 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 	_label->SetText(FText::FromString(spawn.name));
 	_label->SetTextRenderColor(color.ToFColor(true));
 
-	// Summons and traps come marked by the creature kind server patch.
-	_townsperson = spawn.isNpc && !spawn.attackable && (spawn.kind == Network::ECreatureKind::Normal);
+	_townsperson = spawn.isNpc && !spawn.attackable;
 	_speed = spawn.runSpeed;
 	_walkSpeed = spawn.walkSpeed;
 	_swimSpeed = spawn.swimSpeed;

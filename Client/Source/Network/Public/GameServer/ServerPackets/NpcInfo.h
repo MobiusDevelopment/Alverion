@@ -1,13 +1,12 @@
 #pragma once
 
 #include "GameServer/GameServerProtocol.h"
-#include "GameServer/ServerPackets/CreatureKindTrailer.h"
 
 namespace Network
 {
 namespace GameServer
 {
-/** NpcInfo: a monster, a townsperson, a summon or a trap, read as far as its name, then the creature kind trailer from the end. */
+/** NpcInfo: a monster or a townsperson, read as far as its name. */
 inline bool readNpcInfo(TArrayView<const uint8> body, FCharacterSpawn& spawn)
 {
 	FReadBuffer buffer(body);
@@ -46,13 +45,13 @@ inline bool readNpcInfo(TArrayView<const uint8> body, FCharacterSpawn& spawn)
 
 	buffer.readDouble(moveMultiplier);
 
-	// Attack speed multiplier, collision radius and height, three equipment ids, and the flag that shows the name.
+	// Attack speed multiplier, collision radius and height, three equipment ids and the flag that shows the name.
 	buffer.skip(24 + 12 + 1);
 
 	uint8 running = 0;
 	buffer.readUInt8(running);
 
-	// Combat, dead, summoned, and the client name string id.
+	// Combat, dead, summoned and the client name string id.
 	buffer.skip(3 + 4);
 
 	buffer.readString(spawn.name);
@@ -66,7 +65,6 @@ inline bool readNpcInfo(TArrayView<const uint8> body, FCharacterSpawn& spawn)
 	spawn.isNpc = true;
 	spawn.npcId = displayId - npcIdOffset;
 	spawn.attackable = (attackable != 0);
-	spawn.kind = readCreatureKind(body);
 	spawn.location = toLocation(x, y, z);
 	spawn.yaw = headingToYaw(heading);
 	spawn.running = (running != 0);
