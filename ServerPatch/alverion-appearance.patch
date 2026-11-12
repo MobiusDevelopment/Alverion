@@ -74,7 +74,7 @@ index 0000000..651163d
 +			<stat type="pDef">9</stat>
 +		</stats>
 +	</item>
-+	<item id="30004" type="Armor" name="Villager Boots">
++	<item id="30004" type="Armor" name="Villager Sandals">
 +		<set name="bodypart" val="feet" />
 +		<set name="default_action" val="EQUIP" />
 +		<set name="immediate_effect" val="true" />
@@ -140,7 +140,7 @@ diff --git dist/game/data/stats/players/initialEquipment.xml dist/game/data/stat
 +		<item id="30001" count="1" equipped="true" /> <!-- Villager Shirt -->
 +		<item id="30002" count="1" equipped="true" /> <!-- Villager Pants -->
 +		<item id="30003" count="1" equipped="true" /> <!-- Villager Gloves -->
-+		<item id="30004" count="1" equipped="true" /> <!-- Villager Boots -->
++		<item id="30004" count="1" equipped="true" /> <!-- Villager Sandals -->
 +		<item id="30005" count="1" equipped="true" /> <!-- Villager Hat -->
 +	</equipment>
  </list>

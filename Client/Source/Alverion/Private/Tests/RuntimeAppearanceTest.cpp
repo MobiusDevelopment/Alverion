@@ -58,7 +58,7 @@ IMPLEMENT_COMPLEX_AUTOMATION_TEST(FRuntimeAppearanceTest, "Alverion.Characters.R
 namespace
 {
 	const TCHAR* const runtimeDonors[2][4] = { { TEXT("Jelena"), TEXT("Vivian"), TEXT("Aera"), TEXT("Ada") }, { TEXT("Victor"), TEXT("Orlando"), TEXT("Kelvin"), TEXT("Cameron") } };
-	const TCHAR* const runtimePieces[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Boots"), TEXT("BreastWrap"), TEXT("Braies") };
+	const TCHAR* const runtimePieces[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Sandals"), TEXT("BreastWrap"), TEXT("Braies") };
 
 	/** Exercises ordinary character loading and movement in the active standalone game viewport. */
 	class FRuntimeAppearanceCommand : public IAutomationLatentCommand
@@ -425,7 +425,7 @@ namespace
 							}
 						}
 
-						bool bootsVisible = false;
+						bool sandalsVisible = false;
 						bool glovesVisible = false;
 						bool pantsVisible = false;
 						bool ragBodyCovered = false;
@@ -433,7 +433,7 @@ namespace
 						{
 							if (garment->IsVisible())
 							{
-								bootsVisible |= garment->GetName() == TEXT("SKM_Villager_Boots");
+								sandalsVisible |= garment->GetName() == TEXT("SKM_Villager_Sandals");
 								glovesVisible |= garment->GetName() == TEXT("SKM_Villager_Gloves");
 								pantsVisible |= garment->GetName() == TEXT("SKM_Villager_Pants");
 								ragBodyCovered |= garment->GetName() == TEXT("SKM_Villager_Shirt") || garment->GetName() == TEXT("SKM_Villager_Pants") || garment->GetName() == TEXT("SKM_Villager_Braies");
@@ -458,7 +458,7 @@ namespace
 						}
 
 						_test.TestTrue(TEXT("Production uses the exact race coverage profile"), coverage->Parent == profile);
-						_test.TestEqual(TEXT("Covered feet follow boot visibility"), coverage->K2_GetScalarParameterValue(TEXT("FootCoverage")), bootsVisible && !rags ? 1.0f : 0.0f);
+						_test.TestEqual(TEXT("Covered feet follow sandal visibility"), coverage->K2_GetScalarParameterValue(TEXT("FootCoverage")), sandalsVisible && !rags ? 1.0f : 0.0f);
 						_test.TestEqual(TEXT("Covered hands follow glove visibility"), coverage->K2_GetScalarParameterValue(TEXT("HandCoverage")), glovesVisible ? 1.0f : 0.0f);
 						_test.TestEqual(TEXT("Covered legs follow pants visibility and restore for underlayers"), coverage->K2_GetScalarParameterValue(TEXT("PantsCoverage")), (rags ? ragBodyCovered : pantsVisible) ? 1.0f : 0.0f);
 

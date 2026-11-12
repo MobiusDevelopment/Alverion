@@ -76,7 +76,7 @@ namespace Appearance
 	inline constexpr uint8 wornShirt = 1 << 1;
 	inline constexpr uint8 wornPants = 1 << 2;
 	inline constexpr uint8 wornGloves = 1 << 3;
-	inline constexpr uint8 wornBoots = 1 << 4;
+	inline constexpr uint8 wornSandals = 1 << 4;
 	inline constexpr uint8 wornSword = 1 << 5;
 	inline constexpr uint8 wornEverything = 0x3F;
 

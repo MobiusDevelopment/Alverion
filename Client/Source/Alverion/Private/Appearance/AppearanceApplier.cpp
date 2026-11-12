@@ -1106,7 +1106,7 @@ namespace Appearance
 	uint8 wornPieces(TConstArrayView<int32> itemIds)
 	{
 		// In the order of the worn bits: the starter outfit's five garments, then the sword.
-		const TCHAR* const visuals[] = { TEXT("Villager.Hat"), TEXT("Villager.Shirt"), TEXT("Villager.Pants"), TEXT("Villager.Gloves"), TEXT("Villager.Boots"), TEXT("Weapon.StarterWoodenSword") };
+		const TCHAR* const visuals[] = { TEXT("Villager.Hat"), TEXT("Villager.Shirt"), TEXT("Villager.Pants"), TEXT("Villager.Gloves"), TEXT("Villager.Sandals"), TEXT("Weapon.StarterWoodenSword") };
 		uint8 worn = 0;
 		for (const int32 itemId : itemIds)
 		{
@@ -1166,7 +1166,7 @@ namespace Appearance
 			}
 		}
 
-		const TCHAR* const names[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Boots"), TEXT("BreastWrap"), TEXT("Braies") };
+		const TCHAR* const names[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Sandals"), TEXT("BreastWrap"), TEXT("Braies") };
 		const bool pieceFiltered = !pieceOnly.IsEmpty();
 		bool validPiece = !pieceFiltered;
 		for (const TCHAR* name : names)

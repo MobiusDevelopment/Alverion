@@ -59,15 +59,15 @@ msgstr "Guantes de aldeano"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "Botas de cuero suave, domadas en los caminos de la aldea."
+msgid "Simple leather sandals for village roads."
+msgstr "Sandalias sencillas de cuero para los caminos del pueblo."
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "Botas de aldeano"
+msgid "Villager Sandals"
+msgstr "Sandalias de aldeano"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

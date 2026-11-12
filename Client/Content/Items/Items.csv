@@ -2,6 +2,6 @@ Id,Slot,Kind,Icon,Visual,Stackable
 30001,chest,armor,/Game/Equipment/Icons/T_Icon_Villager_Shirt,Villager.Shirt,false
 30002,legs,armor,/Game/Equipment/Icons/T_Icon_Villager_Pants,Villager.Pants,false
 30003,hands,armor,/Game/Equipment/Icons/T_Icon_Villager_Gloves,Villager.Gloves,false
-30004,feet,armor,/Game/Equipment/Icons/T_Icon_Villager_Boots,Villager.Boots,false
+30004,feet,armor,/Game/Equipment/Icons/T_Icon_Villager_Sandals,Villager.Sandals,false
 30005,head,armor,/Game/Equipment/Icons/T_Icon_Villager_Hat,Villager.Hat,false
 30006,main_hand,weapon,/Game/Equipment/Icons/T_Icon_StarterWoodenSword,Weapon.StarterWoodenSword,false

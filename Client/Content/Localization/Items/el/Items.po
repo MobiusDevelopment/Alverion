@@ -59,15 +59,15 @@ msgstr "Χωρικά γάντια"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "Μαλακές δερμάτινες μπότες, στρωμένες στους δρόμους του χωριού."
+msgid "Simple leather sandals for village roads."
+msgstr "Απλά δερμάτινα σανδάλια για τους δρόμους του χωριού."
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "Χωρικές μπότες"
+msgid "Villager Sandals"
+msgstr "Χωρικά σανδάλια"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

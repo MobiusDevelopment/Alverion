@@ -16,6 +16,8 @@ bool FWornPiecesTest::RunTest(const FString& parameters)
 
 	const TArray<int32> shirtAndPants = { 30002, 30001 };
 	TestEqual(TEXT("Order does not matter"), Appearance::wornPieces(shirtAndPants), static_cast<uint8>(Appearance::wornShirt | Appearance::wornPants));
+	const TArray<int32> sandalsOnly = { 30004 };
+	TestEqual(TEXT("The renamed sandals retain their equipment bit"), Appearance::wornPieces(sandalsOnly), Appearance::wornSandals);
 
 	const TArray<int32> unknown = { 987654 };
 	TestEqual(TEXT("An item the data does not list shows nothing"), Appearance::wornPieces(unknown), static_cast<uint8>(0));

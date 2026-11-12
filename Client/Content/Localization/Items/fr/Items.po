@@ -59,15 +59,15 @@ msgstr "Gants de villageois"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "Des bottes de cuir souple, faites aux chemins du village."
+msgid "Simple leather sandals for village roads."
+msgstr "De simples sandales en cuir pour les chemins du village."
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "Bottes de villageois"
+msgid "Villager Sandals"
+msgstr "Sandales de villageois"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

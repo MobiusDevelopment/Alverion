@@ -59,15 +59,15 @@ msgstr "村人の手袋"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "柔らかい革のブーツ。村の道で履き慣らされている。"
+msgid "Simple leather sandals for village roads."
+msgstr "村の道を歩くための質素な革のサンダル。"
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "村人のブーツ"
+msgid "Villager Sandals"
+msgstr "村人のサンダル"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

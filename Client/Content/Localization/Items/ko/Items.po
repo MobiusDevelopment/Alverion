@@ -59,15 +59,15 @@ msgstr "마을 주민의 장갑"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "마을 길에서 길이 든 부드러운 가죽 장화."
+msgid "Simple leather sandals for village roads."
+msgstr "마을 길을 걷기 위한 소박한 가죽 샌들."
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "마을 주민의 장화"
+msgid "Villager Sandals"
+msgstr "마을 주민의 샌들"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

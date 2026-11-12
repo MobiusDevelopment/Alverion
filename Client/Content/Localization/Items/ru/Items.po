@@ -59,15 +59,15 @@ msgstr "Деревенские перчатки"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "Мягкие кожаные сапоги, разношенные на деревенских дорогах."
+msgid "Simple leather sandals for village roads."
+msgstr "Простые кожаные сандалии для деревенских дорог."
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "Деревенские сапоги"
+msgid "Villager Sandals"
+msgstr "Сандалии селянина"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

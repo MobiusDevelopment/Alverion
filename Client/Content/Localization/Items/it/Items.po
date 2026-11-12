@@ -59,15 +59,15 @@ msgstr "Guanti da paesano"
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.description"
-msgid "Soft leather boots, worn in on village roads."
-msgstr "Morbidi stivali di cuoio, rodati sulle strade del villaggio."
+msgid "Simple leather sandals for village roads."
+msgstr "Semplici sandali di cuoio per le strade del villaggio."
 
 #. Key:	30004.name
 #. SourceLocation:	Localization/StringTables/ST_Items.csv
 #: Localization/StringTables/ST_Items.csv
 msgctxt "ST_Items,30004.name"
-msgid "Villager Boots"
-msgstr "Stivali da paesano"
+msgid "Villager Sandals"
+msgstr "Sandali da paesano"
 
 #. Key:	30005.description
 #. SourceLocation:	Localization/StringTables/ST_Items.csv

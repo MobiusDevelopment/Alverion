@@ -57,6 +57,14 @@ bool FItemCatalogTest::RunTest(const FString& parameters)
 	}
 	TestFalse(TEXT("ST_Items names it"), ItemCatalog::name(30001).ToString().Contains(TEXT("30001")));
 	TestFalse(TEXT("And describes it"), ItemCatalog::description(30001).IsEmpty());
+	const FItemData* sandals = ItemCatalog::find(30004);
+	if (TestNotNull(TEXT("Items.csv carries the starter sandals"), sandals))
+	{
+		TestEqual(TEXT("The sandals retain their feet slot"), sandals->slot, FString(TEXT("feet")));
+		TestEqual(TEXT("The sandals use their renamed visual"), sandals->visual, FString(TEXT("Villager.Sandals")));
+		TestEqual(TEXT("The sandals use their renamed icon"), sandals->icon, FString(TEXT("/Game/Equipment/Icons/T_Icon_Villager_Sandals")));
+		TestNotNull(TEXT("The sandals icon loads"), LoadObject<UTexture2D>(nullptr, *sandals->icon));
+	}
 	return true;
 }
 

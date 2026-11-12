@@ -113,7 +113,7 @@ bool FCharacterSelectionIdleTest::RunTest(const FString& parameters)
 			const bool creation = spot == EAvatarSpot::Create;
 			UAnimSingleNodeInstance* previewPlayer = previewBody->GetSingleNodeInstance();
 			TestTrue(TEXT("Both menu screens retain the relaxed standing idle"), (previewPlayer != nullptr) && (previewPlayer->GetCurrentAsset() == idle));
-			const TCHAR* const pieces[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Boots"), TEXT("BreastWrap"), TEXT("Braies") };
+			const TCHAR* const pieces[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Sandals"), TEXT("BreastWrap"), TEXT("Braies") };
 			for (int32 index = 0; index < UE_ARRAY_COUNT(pieces); index++)
 			{
 				if (male && index == 5)
