@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-09 17:29\n"
-"PO-Revision-Date: 2026-11-09 17:29\n"
+"POT-Creation-Date: 2026-11-12 21:01\n"
+"PO-Revision-Date: 2026-11-12 21:01\n"
 "Language-Team: \n"
 "Language: pt\n"
 "MIME-Version: 1.0\n"
@@ -279,6 +279,13 @@ msgctxt "ST_Game,inventory.character"
 msgid "Character"
 msgstr "Personagem"
 
+#. Key:	inventory.item_unknown
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.item_unknown"
+msgid "Item {0}"
+msgstr "Item {0}"
+
 #. Key:	inventory.slot_back
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
@@ -293,12 +300,26 @@ msgctxt "ST_Game,inventory.slot_chest"
 msgid "Chest"
 msgstr "Peito"
 
+#. Key:	inventory.slot_ear
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.slot_ear"
+msgid "Ear"
+msgstr "Orelha"
+
 #. Key:	inventory.slot_feet
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
 msgctxt "ST_Game,inventory.slot_feet"
 msgid "Feet"
 msgstr "Pés"
+
+#. Key:	inventory.slot_finger
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.slot_finger"
+msgid "Finger"
+msgstr "Dedo"
 
 #. Key:	inventory.slot_hands
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -327,6 +348,13 @@ msgstr "Pernas"
 msgctxt "ST_Game,inventory.slot_main_hand"
 msgid "Main Hand"
 msgstr "Mão principal"
+
+#. Key:	inventory.slot_neck
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.slot_neck"
+msgid "Neck"
+msgstr "Pescoço"
 
 #. Key:	inventory.slot_off_hand
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -551,6 +579,76 @@ msgstr "Mover para a esquerda"
 msgctxt "ST_Game,keybind.MoveRight"
 msgid "Strafe Right"
 msgstr "Mover para a direita"
+
+#. Key:	keybind.Shortcut1
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut1"
+msgid "Action Bar 1"
+msgstr "Barra de ação 1"
+
+#. Key:	keybind.Shortcut10
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut10"
+msgid "Action Bar 10"
+msgstr "Barra de ação 10"
+
+#. Key:	keybind.Shortcut2
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut2"
+msgid "Action Bar 2"
+msgstr "Barra de ação 2"
+
+#. Key:	keybind.Shortcut3
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut3"
+msgid "Action Bar 3"
+msgstr "Barra de ação 3"
+
+#. Key:	keybind.Shortcut4
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut4"
+msgid "Action Bar 4"
+msgstr "Barra de ação 4"
+
+#. Key:	keybind.Shortcut5
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut5"
+msgid "Action Bar 5"
+msgstr "Barra de ação 5"
+
+#. Key:	keybind.Shortcut6
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut6"
+msgid "Action Bar 6"
+msgstr "Barra de ação 6"
+
+#. Key:	keybind.Shortcut7
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut7"
+msgid "Action Bar 7"
+msgstr "Barra de ação 7"
+
+#. Key:	keybind.Shortcut8
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut8"
+msgid "Action Bar 8"
+msgstr "Barra de ação 8"
+
+#. Key:	keybind.Shortcut9
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,keybind.Shortcut9"
+msgid "Action Bar 9"
+msgstr "Barra de ação 9"
 
 #. Key:	keybind.SwitchCamera
 #. SourceLocation:	Localization/StringTables/ST_Game.csv

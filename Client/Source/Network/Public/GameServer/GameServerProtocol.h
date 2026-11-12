@@ -187,6 +187,50 @@ struct NETWORK_API FUserInfo
 
 	/** In the server's units, as the server states it. */
 	int32 runSpeed = 0;
+
+	/** How many items the bag holds. Zero until a UserInfo that reaches that far arrives. */
+	int32 inventoryLimit = 0;
+};
+
+/** One item this client's character carries, in the bag or worn, as ItemList and InventoryUpdate describe it. */
+struct NETWORK_API FInventoryItem
+{
+	uint32 objectId = 0;
+	int32 itemId = 0;
+
+	/** Where it sits: its place in the bag, or the paperdoll slot it is worn in. */
+	int32 location = 0;
+	int64 count = 0;
+
+	/** The server's broad kind: 0 weapon, 1 armor or shield, 2 jewelry, 3 quest item, 4 adena, 5 anything else. */
+	uint16 type2 = 0;
+	bool equipped = false;
+
+	/** The body part mask of the slots it is worn on. */
+	int32 bodyPart = 0;
+	uint16 enchant = 0;
+};
+
+/** What a shortcut points at, numbered as the server numbers them. */
+enum class EShortcutType : int32
+{
+	None = 0,
+	Item = 1,
+	Skill = 2,
+	Action = 3,
+	Macro = 4,
+	Recipe = 5,
+	Bookmark = 6
+};
+
+/** One action bar shortcut. An item shortcut names the item's object id, not the item, so it follows that one item. */
+struct NETWORK_API FShortcut
+{
+	/** The page times twelve plus the place on the page. */
+	int32 slot = 0;
+	EShortcutType type = EShortcutType::None;
+	int32 id = 0;
+	int32 level = 0;
 };
 
 /** One StatusUpdate: some figures of one creature that changed, each as an attribute id and its new value. */
@@ -264,10 +308,12 @@ namespace Opcode
 	inline constexpr uint32 npcInfo = 0x0C;
 	inline constexpr uint32 characterCreateSuccess = 0x0F;
 	inline constexpr uint32 characterCreateFail = 0x10;
+	inline constexpr uint32 itemList = 0x11;
 	inline constexpr uint32 statusUpdate = 0x18;
 	inline constexpr uint32 npcHtmlMessage = 0x19;
 	inline constexpr uint32 characterDeleteSuccess = 0x1D;
 	inline constexpr uint32 characterDeleteFail = 0x1E;
+	inline constexpr uint32 inventoryUpdate = 0x21;
 	inline constexpr uint32 teleportToLocation = 0x22;
 	inline constexpr uint32 targetUnselected = 0x24;
 	inline constexpr uint32 changeMoveType = 0x28;
@@ -275,6 +321,8 @@ namespace Opcode
 	inline constexpr uint32 moveToLocation = 0x2F;
 	inline constexpr uint32 charInfo = 0x31;
 	inline constexpr uint32 userInfo = 0x32;
+	inline constexpr uint32 shortcutRegister = 0x44;
+	inline constexpr uint32 shortcutInit = 0x45;
 	inline constexpr uint32 stopMove = 0x47;
 	inline constexpr uint32 creatureSay = 0x4A;
 	inline constexpr uint32 restartResponse = 0x71;
@@ -289,17 +337,22 @@ namespace Opcode
 	inline constexpr uint8 moveBackwardToLocation = 0x0F;
 	inline constexpr uint8 enterWorld = 0x11;
 	inline constexpr uint8 characterSelect = 0x12;
+	inline constexpr uint8 requestUnEquipItem = 0x16;
+	inline constexpr uint8 useItem = 0x19;
 	inline constexpr uint8 action = 0x1F;
 	inline constexpr uint8 requestLinkHtml = 0x22;
 	inline constexpr uint8 requestBypassToServer = 0x23;
 	inline constexpr uint8 authLogin = 0x2B;
 	inline constexpr uint8 appearing = 0x3A;
+	inline constexpr uint8 requestShortcutReg = 0x3D;
+	inline constexpr uint8 requestShortcutDel = 0x3F;
 	inline constexpr uint8 say2 = 0x49;
 	inline constexpr uint8 requestRestart = 0x57;
 	inline constexpr uint8 validatePosition = 0x59;
 
 	// Extended client packets: this byte, then a uint16 naming the packet.
 	inline constexpr uint8 extended = 0xD0;
+	inline constexpr int16 requestSaveInventoryOrder = 0x24;
 	inline constexpr int16 requestGotoLobby = 0x36;
 	inline constexpr int16 requestHardWareInfo = 0x96;
 }

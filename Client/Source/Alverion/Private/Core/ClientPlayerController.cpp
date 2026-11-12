@@ -8,8 +8,10 @@
 #include "InputMappingContext.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "UI/ActionBarWidget.h"
 #include "UI/GameMenuWidget.h"
 #include "UI/ChatLineWidget.h"
+#include "UI/InventoryLayout.h"
 #include "UI/InventoryWidget.h"
 #include "UI/MapWidget.h"
 #include "UI/NpcDialogWidget.h"
@@ -156,6 +158,16 @@ void AClientPlayerController::SetupInputComponent()
 		UE_LOG(LogTemp, Warning, TEXT("ClientPlayerController could not load %s, so the interact key does nothing."), interactActionPath);
 	}
 
+	// The action bar's keys, each using what its slot points at.
+	for (int32 index = 0; index < UActionBarWidget::slotCount; index++)
+	{
+		const UInputAction* shortcutAction = (bootstrap != nullptr) ? bootstrap->getShortcutAction(index) : nullptr;
+		if (shortcutAction != nullptr)
+		{
+			enhancedInput->BindAction(shortcutAction, ETriggerEvent::Started, this, &AClientPlayerController::useShortcut, index);
+		}
+	}
+
 	// Alt+H for a clean screenshot: a fixed chord made here rather than a rebindable action asset, read as H with Alt held.
 	if (_hideInterfaceAction == nullptr)
 	{
@@ -248,6 +260,16 @@ void AClientPlayerController::startChat()
 {
 	// A screen like the map, so CommonUI gives its box the keys; openScreen also brings back an interface Alt+H hid.
 	openOverBareWorld(UChatLineWidget::StaticClass());
+}
+
+void AClientPlayerController::useShortcut(int32 index)
+{
+	UGameInstance* gameInstance = GetGameInstance();
+	UServerConnectionSubsystem* connection = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	if ((connection != nullptr) && connection->world().isActive())
+	{
+		InventoryLayout::useShortcut(connection->world(), index);
+	}
 }
 
 void AClientPlayerController::interact()

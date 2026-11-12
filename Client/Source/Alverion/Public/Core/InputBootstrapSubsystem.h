@@ -1,11 +1,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputAction.h"
 #include "Subsystems/LocalPlayerSubsystem.h"
 
 #include "InputBootstrapSubsystem.generated.h"
 
 class UInputMappingContext;
+
+// An action made at runtime that carries its own rebindable name, which Enhanced Input lets only a subclass set.
+UCLASS()
+class ALVERION_API UMappableInputAction : public UInputAction
+{
+	GENERATED_BODY()
+
+public:
+	void makeMappable(FName name, const FText& displayName);
+};
 
 // Builds the default mapping context and hands it to Enhanced Input, both to play with and to rebind against.
 // The defaults live in C++ rather than in the asset because the editor tooling cannot write the mapping array,
@@ -39,9 +50,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	void registerWithUserSettings();
 
+	// The action that uses an action bar slot, or null past the bar's end.
+	UInputAction* getShortcutAction(int32 index) const;
+
 private:
 	void buildDefaultMappings();
 
 	UPROPERTY()
 	TObjectPtr<UInputMappingContext> _defaultMappingContext;
+
+	// One per action bar slot, made at startup: each needs a rebindable name of its own, and ten assets would only repeat each other.
+	UPROPERTY()
+	TArray<TObjectPtr<UInputAction>> _shortcutActions;
 };

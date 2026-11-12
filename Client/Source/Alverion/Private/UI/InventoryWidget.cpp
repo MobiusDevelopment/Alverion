@@ -8,6 +8,7 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ScaleBox.h"
+#include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
@@ -17,8 +18,11 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameServer/WorldFlow.h"
 #include "InputAction.h"
 #include "ServerConnectionSubsystem.h"
+#include "UI/InventoryLayout.h"
+#include "UI/ItemSlotWidget.h"
 #include "UI/LocalizedText.h"
 #include "UI/UIStyle.h"
 #include "UI/UISubsystem.h"
@@ -30,11 +34,9 @@ namespace
 
 	constexpr FLinearColor backdropColor = FLinearColor(0.01f, 0.01f, 0.015f, 0.55f);
 	constexpr FLinearColor panelFill = FLinearColor(0.035f, 0.03f, 0.028f, 0.94f);
-	constexpr FLinearColor bagSlotFill = FLinearColor(0.02f, 0.018f, 0.016f, 1.0f);
 	constexpr FLinearColor headingColor = FLinearColor(0.86f, 0.68f, 0.36f, 1.0f);
 
 	constexpr float panelRadius = 8.0f;
-	constexpr float bagSlotRadius = 4.0f;
 	constexpr float panelPadding = 20.0f;
 	constexpr float panelGap = 16.0f;
 	constexpr float bagSlotSize = 56.0f;
@@ -43,17 +45,14 @@ namespace
 	constexpr float sheetPortraitHeight = 280.0f;
 	constexpr float statColumnWidth = 190.0f;
 	constexpr int32 bagColumns = 8;
-	constexpr int32 bagRows = 9;
+
+	// The rows the bag shows before it scrolls.
+	constexpr int32 bagVisibleRows = 9;
 
 	constexpr int32 headingFontSize = 20;
 	constexpr int32 nameFontSize = 26;
 	constexpr int32 smallFontSize = 14;
-	constexpr int32 slotFontSize = 11;
 	constexpr int32 statFontSize = 15;
-
-	// The equipment slots either side of the picture, top to bottom.
-	const TCHAR* const leftSlotKeys[] = { TEXT("inventory.slot_head"), TEXT("inventory.slot_chest"), TEXT("inventory.slot_back"), TEXT("inventory.slot_main_hand") };
-	const TCHAR* const rightSlotKeys[] = { TEXT("inventory.slot_hands"), TEXT("inventory.slot_legs"), TEXT("inventory.slot_feet"), TEXT("inventory.slot_off_hand") };
 
 	// The figures under the picture, as two columns read top to bottom. refresh fills the values in this same order.
 	const TCHAR* const statKeys[] =
@@ -65,25 +64,12 @@ namespace
 	};
 	constexpr int32 statRowsPerColumn = 8;
 
-	// An empty slot frame, holding whatever caption it is handed.
-	USizeBox* makeSlot(UWidgetTree& tree, UWidget* caption)
+	// A slot of the paperdoll or the bag.
+	UItemSlotWidget* makeItemSlot(UWidgetTree& tree, EItemSlotKind kind, int32 index, const FText& caption)
 	{
-		USizeBox* box = tree.ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		box->SetWidthOverride(bagSlotSize);
-		box->SetHeightOverride(bagSlotSize);
-
-		UBorder* frame = tree.ConstructWidget<UBorder>(UBorder::StaticClass());
-		frame->SetBrush(UIStyle::stateBrush(bagSlotFill, UIStyle::outline, bagSlotRadius));
-		frame->SetHorizontalAlignment(HAlign_Center);
-		frame->SetVerticalAlignment(VAlign_Bottom);
-		frame->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 4.0f));
-		if (caption != nullptr)
-		{
-			frame->SetContent(caption);
-		}
-
-		box->AddChild(frame);
-		return box;
+		UItemSlotWidget* slot = tree.ConstructWidget<UItemSlotWidget>(UItemSlotWidget::StaticClass());
+		slot->setup(kind, index, caption, bagSlotSize);
+		return slot;
 	}
 
 	// The rounded dark box a panel sits in, holding a column that starts with the heading.
@@ -113,12 +99,15 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 	if ((WidgetTree != nullptr) && (WidgetTree->RootWidget == nullptr))
 	{
 		// A faint dim over the running world, with both panels centred and shrunk to fit a small window.
+		// Neither the dim nor the space around the panels takes the mouse, so an item can be dropped on the action bar beneath.
 		UOverlay* root = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		root->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 
 		UImage* backdrop = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
 		FSlateBrush backdropBrush;
 		backdropBrush.TintColor = FSlateColor(backdropColor);
 		backdrop->SetBrush(backdropBrush);
+		backdrop->SetVisibility(ESlateVisibility::HitTestInvisible);
 
 		UOverlaySlot* backdropSlot = root->AddChildToOverlay(backdrop);
 		backdropSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -149,12 +138,17 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 		UHorizontalBox* paperdoll = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 		character->AddChildToVerticalBox(paperdoll);
 
-		UVerticalBox* leftSlots = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		for (const TCHAR* key : leftSlotKeys)
+		// The paperdoll in InventoryLayout's order: a column left of the picture, a column right of it, then the jewelry in a row underneath.
+		const TConstArrayView<InventoryLayout::FPaperdollSlot> places = InventoryLayout::paperdollSlots();
+		for (const InventoryLayout::FPaperdollSlot& place : places)
 		{
-			UTextBlock* caption = makeCaption(key, slotFontSize, UIStyle::mutedColor);
-			caption->SetJustification(ETextJustify::Center);
-			UVerticalBoxSlot* slot = leftSlots->AddChildToVerticalBox(makeSlot(*WidgetTree, caption));
+			_paperdoll.Add(makeItemSlot(*WidgetTree, EItemSlotKind::Paperdoll, place.location, LocalizedText::get(place.captionKey)));
+		}
+
+		UVerticalBox* leftSlots = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		for (int32 index = 0; index < InventoryLayout::sideSlotCount; index++)
+		{
+			UVerticalBoxSlot* slot = leftSlots->AddChildToVerticalBox(_paperdoll[index]);
 			slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, bagSlotGap));
 		}
 
@@ -172,15 +166,24 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 		portraitSlot->SetVerticalAlignment(VAlign_Top);
 
 		UVerticalBox* rightSlots = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		for (const TCHAR* key : rightSlotKeys)
+		for (int32 index = InventoryLayout::sideSlotCount; index < (InventoryLayout::sideSlotCount * 2); index++)
 		{
-			UTextBlock* caption = makeCaption(key, slotFontSize, UIStyle::mutedColor);
-			caption->SetJustification(ETextJustify::Center);
-			UVerticalBoxSlot* slot = rightSlots->AddChildToVerticalBox(makeSlot(*WidgetTree, caption));
+			UVerticalBoxSlot* slot = rightSlots->AddChildToVerticalBox(_paperdoll[index]);
 			slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, bagSlotGap));
 		}
 
 		paperdoll->AddChildToHorizontalBox(rightSlots);
+
+		UHorizontalBox* jewelry = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		for (int32 index = InventoryLayout::sideSlotCount * 2; index < _paperdoll.Num(); index++)
+		{
+			UHorizontalBoxSlot* slot = jewelry->AddChildToHorizontalBox(_paperdoll[index]);
+			slot->SetPadding(FMargin(bagSlotGap * 0.5f, 0.0f));
+		}
+
+		UVerticalBoxSlot* jewelrySlot = character->AddChildToVerticalBox(jewelry);
+		jewelrySlot->SetHorizontalAlignment(HAlign_Center);
+		jewelrySlot->SetPadding(FMargin(0.0f, bagSlotGap, 0.0f, 0.0f));
 
 		UHorizontalBox* stats = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 		UVerticalBoxSlot* statsSlot = character->AddChildToVerticalBox(stats);
@@ -213,20 +216,20 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 			rowSlot->SetPadding(FMargin(0.0f, 1.0f));
 		}
 
-		// The bag: an empty grid until the server's items are read.
+		// The bag: a grid as big as the server says the bag is, scrolling past the rows that fit. refreshItems fills it.
 		UVerticalBox* bag = makePanel(*WidgetTree, *panels, *makeCaption(TEXT("inventory.title"), headingFontSize, headingColor));
 
-		UUniformGridPanel* grid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass());
-		grid->SetSlotPadding(FMargin(bagSlotGap * 0.5f));
-		for (int32 row = 0; row < bagRows; row++)
-		{
-			for (int32 column = 0; column < bagColumns; column++)
-			{
-				grid->AddChildToUniformGrid(makeSlot(*WidgetTree, nullptr), row, column);
-			}
-		}
+		USizeBox* bagView = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		bagView->SetHeightOverride(bagVisibleRows * (bagSlotSize + bagSlotGap));
 
-		bag->AddChildToVerticalBox(grid);
+		UScrollBox* scroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
+		bagView->AddChild(scroll);
+
+		_bagGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass());
+		_bagGrid->SetSlotPadding(FMargin(bagSlotGap * 0.5f));
+		scroll->AddChild(_bagGrid);
+
+		bag->AddChildToVerticalBox(bagView);
 
 		WidgetTree->RootWidget = root;
 
@@ -310,6 +313,12 @@ void UInventoryWidget::refresh()
 		_captions[index]->SetText(LocalizedText::get(_captionKeys[index]));
 	}
 
+	const TConstArrayView<InventoryLayout::FPaperdollSlot> places = InventoryLayout::paperdollSlots();
+	for (int32 index = 0; (index < _paperdoll.Num()) && (index < places.Num()); index++)
+	{
+		_paperdoll[index]->setCaption(LocalizedText::get(places[index].captionKey));
+	}
+
 	UGameInstance* gameInstance = GetGameInstance();
 	UServerConnectionSubsystem* link = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
 	if (link == nullptr)
@@ -351,5 +360,56 @@ void UInventoryWidget::refresh()
 	for (int32 index = 0; (index < _statValues.Num()) && (index < static_cast<int32>(UE_ARRAY_COUNT(values))); index++)
 	{
 		_statValues[index]->SetText(values[index]);
+	}
+
+	refreshItems();
+}
+
+void UInventoryWidget::NativeTick(const FGeometry& geometry, float deltaSeconds)
+{
+	Super::NativeTick(geometry, deltaSeconds);
+
+	UGameInstance* gameInstance = GetGameInstance();
+	UServerConnectionSubsystem* link = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	if ((link != nullptr) && (link->world().revision() != _shownRevision))
+	{
+		refreshItems();
+	}
+}
+
+void UInventoryWidget::refreshItems()
+{
+	UGameInstance* gameInstance = GetGameInstance();
+	UServerConnectionSubsystem* link = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	if ((link == nullptr) || (_bagGrid == nullptr))
+	{
+		return;
+	}
+
+	const Network::FWorldFlow& world = link->world();
+	_shownRevision = world.revision();
+	const TArray<Network::FInventoryItem>& items = world.items();
+
+	const TConstArrayView<InventoryLayout::FPaperdollSlot> places = InventoryLayout::paperdollSlots();
+	for (int32 index = 0; (index < _paperdoll.Num()) && (index < places.Num()); index++)
+	{
+		_paperdoll[index]->show(InventoryLayout::wornAt(items, places[index].location), nullptr);
+	}
+
+	// Whole rows, at least as many places as the bag holds and never fewer than what is in it.
+	const TArray<const Network::FInventoryItem*> bagItems = InventoryLayout::bagItems(items);
+	const int32 limit = (world.userInfo().inventoryLimit > 0) ? world.userInfo().inventoryLimit : InventoryLayout::defaultBagSize;
+	const int32 wanted = FMath::DivideAndRoundUp(FMath::Max(limit, bagItems.Num()), bagColumns) * bagColumns;
+	while (_bag.Num() < wanted)
+	{
+		const int32 index = _bag.Num();
+		UItemSlotWidget* slot = makeItemSlot(*WidgetTree, EItemSlotKind::Bag, index, FText::GetEmpty());
+		_bagGrid->AddChildToUniformGrid(slot, index / bagColumns, index % bagColumns);
+		_bag.Add(slot);
+	}
+
+	for (int32 index = 0; index < _bag.Num(); index++)
+	{
+		_bag[index]->show(bagItems.IsValidIndex(index) ? bagItems[index] : nullptr, nullptr);
 	}
 }

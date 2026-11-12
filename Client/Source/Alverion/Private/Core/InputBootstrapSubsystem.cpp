@@ -35,6 +35,15 @@ namespace
 		{ TEXT("/Game/Input/Actions/IA_SwitchCamera.IA_SwitchCamera"), TEXT("LeftShift"), TEXT("Gamepad_LeftShoulder") },
 		{ TEXT("/Game/Input/Actions/IA_AutoRun.IA_AutoRun"), TEXT("NumLock"), TEXT("ThumbMouseButton") }
 	};
+
+	// The action bar's keys, the number row from 1 to 0, listed after the table on the options screen.
+	const TCHAR* const inputShortcutKeyNames[] = { TEXT("One"), TEXT("Two"), TEXT("Three"), TEXT("Four"), TEXT("Five"), TEXT("Six"), TEXT("Seven"), TEXT("Eight"), TEXT("Nine"), TEXT("Zero") };
+
+	// The rebindable name of a slot's action, which also keys its translated label as keybind.Shortcut1 and on.
+	FName inputShortcutMappingName(int32 index)
+	{
+		return FName(*FString::Printf(TEXT("Shortcut%d"), index + 1));
+	}
 }
 
 void UInputBootstrapSubsystem::Initialize(FSubsystemCollectionBase& collection)
@@ -128,7 +137,17 @@ TArray<FName> UInputBootstrapSubsystem::getDefaultMappingOrder() const
 		names.AddUnique(settings->Name);
 	}
 
+	for (int32 index = 0; index < static_cast<int32>(UE_ARRAY_COUNT(inputShortcutKeyNames)); index++)
+	{
+		names.AddUnique(inputShortcutMappingName(index));
+	}
+
 	return names;
+}
+
+UInputAction* UInputBootstrapSubsystem::getShortcutAction(int32 index) const
+{
+	return _shortcutActions.IsValidIndex(index) ? _shortcutActions[index].Get() : nullptr;
 }
 
 UInputMappingContext* UInputBootstrapSubsystem::getDefaultMappingContext() const
@@ -157,4 +176,21 @@ void UInputBootstrapSubsystem::buildDefaultMappings()
 			_defaultMappingContext->MapKey(action, FKey(binding.secondaryKeyName));
 		}
 	}
+
+	// The action bar's keys, made here with the rebindable names an asset would otherwise carry.
+	for (int32 index = 0; index < static_cast<int32>(UE_ARRAY_COUNT(inputShortcutKeyNames)); index++)
+	{
+		const FName name = inputShortcutMappingName(index);
+		UMappableInputAction* action = NewObject<UMappableInputAction>(this, name);
+		action->makeMappable(name, FText::Format(INVTEXT("Action Bar {0}"), FText::AsNumber(index + 1)));
+		_shortcutActions.Add(action);
+		_defaultMappingContext->MapKey(action, FKey(inputShortcutKeyNames[index]));
+	}
+}
+
+void UMappableInputAction::makeMappable(FName name, const FText& displayName)
+{
+	PlayerMappableKeySettings = NewObject<UPlayerMappableKeySettings>(this);
+	PlayerMappableKeySettings->Name = name;
+	PlayerMappableKeySettings->DisplayName = displayName;
 }

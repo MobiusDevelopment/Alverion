@@ -1,4 +1,5 @@
 #include "Internationalization/StringTableRegistry.h"
+#include "Items/ItemCatalog.h"
 #include "Boot/LoadingScreen.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -42,6 +43,7 @@ public:
 		// A CSV rather than a string table asset, so anyone can add or change a line as text.
 		// The namespace is what the translations are keyed under, so it must stay ST_Game for them to match.
 		LOCTABLE_FROMFILE_GAME("ST_Game", "ST_Game", "Localization/StringTables/ST_Game.csv");
+		ItemCatalog::registerTable();
 
 		// The first map is loaded by the engine before anything of ours runs, so it is armed here.
 		client::armLoadingScreen();

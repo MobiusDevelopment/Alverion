@@ -30,6 +30,9 @@ private:
 	/** The interact key talks to the townsperson the character is facing, if there is one in reach. */
 	void interact();
 
+	/** An action bar key uses what its slot points at. */
+	void useShortcut(int32 index);
+
 	/** A dialog page from the server opens the dialog, or replaces the page of the one already open. */
 	void showNpcHtml(const Network::FNpcHtml& message);
 

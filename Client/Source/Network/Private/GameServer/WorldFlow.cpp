@@ -39,6 +39,9 @@ bool FWorldFlow::begin(FGameServerFlow& gameServer)
 	_gameServer = &gameServer;
 	_localObjectId = gameServer.selected().objectId;
 	_userInfo = FUserInfo();
+	_items.Reset();
+	_shortcuts.Reset();
+	_revision++;
 	_hasLocalState = false;
 	_moving = false;
 	_sinceMoveSent = 0.0f;
@@ -70,6 +73,112 @@ bool FWorldFlow::isActive() const
 const FUserInfo& FWorldFlow::userInfo() const
 {
 	return _userInfo;
+}
+
+const TArray<FInventoryItem>& FWorldFlow::items() const
+{
+	return _items;
+}
+
+const TMap<int32, FShortcut>& FWorldFlow::shortcuts() const
+{
+	return _shortcuts;
+}
+
+uint32 FWorldFlow::revision() const
+{
+	return _revision;
+}
+
+bool FWorldFlow::canSend() const
+{
+	return (_gameServer != nullptr) && (_gameServer->session() != nullptr) && (_gameServer->step() == EGameServerStep::InWorld);
+}
+
+bool FWorldFlow::useItem(uint32 objectId)
+{
+	if (!canSend() || (objectId == 0))
+	{
+		return false;
+	}
+
+	FWriteBuffer buffer;
+	GameServer::writeUseItem(buffer, objectId);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
+bool FWorldFlow::unequip(int32 bodyPartMask)
+{
+	if (!canSend() || (bodyPartMask == 0))
+	{
+		return false;
+	}
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestUnEquipItem(buffer, bodyPartMask);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
+bool FWorldFlow::setShortcut(const FShortcut& shortcut)
+{
+	if (!canSend() || (shortcut.type == EShortcutType::None))
+	{
+		return false;
+	}
+
+	_shortcuts.Add(shortcut.slot, shortcut);
+	_revision++;
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestShortcutReg(buffer, shortcut);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
+bool FWorldFlow::clearShortcut(int32 slot)
+{
+	if (!canSend())
+	{
+		return false;
+	}
+
+	_shortcuts.Remove(slot);
+	_revision++;
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestShortcutDel(buffer, slot);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
+bool FWorldFlow::saveInventoryOrder(TConstArrayView<TPair<uint32, int32>> order)
+{
+	if (!canSend() || order.IsEmpty())
+	{
+		return false;
+	}
+
+	for (const TPair<uint32, int32>& place : order)
+	{
+		FInventoryItem* item = _items.FindByPredicate([&place](const FInventoryItem& candidate)
+		{
+			return candidate.objectId == place.Key;
+		});
+
+		if ((item != nullptr) && !item->equipped)
+		{
+			item->location = place.Value;
+		}
+	}
+
+	_revision++;
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestSaveInventoryOrder(buffer, order);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
 }
 
 bool FWorldFlow::say(const FString& text, EChatChannel channel)
@@ -254,6 +363,55 @@ void FWorldFlow::handlePacket(uint32 opcode, TArrayView<const uint8> body)
 			{
 				_localObjectId = info.objectId;
 				_userInfo = info;
+			}
+
+			return;
+		}
+		case GameServer::Opcode::itemList:
+		{
+			TArray<FInventoryItem> items;
+			if (GameServer::readItemList(buffer, items))
+			{
+				_items = MoveTemp(items);
+				_revision++;
+			}
+
+			return;
+		}
+		case GameServer::Opcode::inventoryUpdate:
+		{
+			TArray<TPair<GameServer::EItemChange, FInventoryItem>> changes;
+			if (GameServer::readInventoryUpdate(buffer, changes))
+			{
+				GameServer::applyInventoryUpdate(_items, changes);
+				_revision++;
+			}
+
+			return;
+		}
+		case GameServer::Opcode::shortcutInit:
+		{
+			TArray<FShortcut> shortcuts;
+			if (GameServer::readShortcutInit(buffer, shortcuts))
+			{
+				_shortcuts.Reset();
+				for (const FShortcut& shortcut : shortcuts)
+				{
+					_shortcuts.Add(shortcut.slot, shortcut);
+				}
+
+				_revision++;
+			}
+
+			return;
+		}
+		case GameServer::Opcode::shortcutRegister:
+		{
+			FShortcut shortcut;
+			if (GameServer::readShortcut(buffer, shortcut))
+			{
+				_shortcuts.Add(shortcut.slot, shortcut);
+				_revision++;
 			}
 
 			return;

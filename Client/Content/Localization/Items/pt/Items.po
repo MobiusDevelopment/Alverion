@@ -1,0 +1,15 @@
+﻿# Items Portuguese translation.
+# Fill out your copyright notice in the Description page of Project Settings.
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Items\n"
+"POT-Creation-Date: 2026-11-12 21:10\n"
+"PO-Revision-Date: 2026-11-12 21:10\n"
+"Language-Team: \n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+

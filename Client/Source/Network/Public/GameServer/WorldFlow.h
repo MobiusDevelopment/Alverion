@@ -43,6 +43,30 @@ public:
 	/** The latest UserInfo, all zero until the first one arrives after EnterWorld. */
 	const FUserInfo& userInfo() const;
 
+	/** Everything the character carries, worn or in the bag, as the server last listed and updated it. */
+	const TArray<FInventoryItem>& items() const;
+
+	/** Every shortcut the character has, keyed by slot. */
+	const TMap<int32, FShortcut>& shortcuts() const;
+
+	/** Counts up whenever the items or the shortcuts change, so a screen can tell when it has something new to draw. */
+	uint32 revision() const;
+
+	/** Uses an item: one that is worn comes off, one that can be worn goes on, and anything else is used. */
+	bool useItem(uint32 objectId);
+
+	/** Takes off what is worn on one body part, named by its mask. */
+	bool unequip(int32 bodyPartMask);
+
+	/** Puts a shortcut in its slot. The server confirms it, and the copy here changes at once so the bar does not wait. */
+	bool setShortcut(const FShortcut& shortcut);
+
+	/** Empties a shortcut slot, here and on the server, which sends nothing back. */
+	bool clearShortcut(int32 slot);
+
+	/** Saves the bag's order as pairs of object id and place, here at once and on the server. */
+	bool saveInventoryOrder(TConstArrayView<TPair<uint32, int32>> order);
+
 	FCharacterSpawned onSpawned;
 	FCharacterDespawned onDespawned;
 	FCharacterMoved onMoved;
@@ -82,9 +106,15 @@ private:
 	void sendValidate();
 	void sendAction(uint32 objectId);
 
+	/** Whether there is a world to send to. */
+	bool canSend() const;
+
 	FGameServerFlow* _gameServer = nullptr;
 	uint32 _localObjectId = 0;
 	FUserInfo _userInfo;
+	TArray<FInventoryItem> _items;
+	TMap<int32, FShortcut> _shortcuts;
+	uint32 _revision = 0;
 
 	FVector _location = FVector::ZeroVector;
 	FVector _previousLocation = FVector::ZeroVector;

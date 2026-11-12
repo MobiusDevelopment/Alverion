@@ -69,6 +69,23 @@ inline bool readUserInfo(FReadBuffer& buffer, FUserInfo& info)
 	}
 
 	info.objectId = static_cast<uint32>(objectId);
+
+	// Further on, the bag's size: past the other speeds, the size multipliers, the looks, the title, the clan, the cubics and the recommendations.
+	// A packet that stops short only leaves it unknown.
+	FString title;
+	uint16 cubics = 0;
+	int16 limit = 0;
+	buffer.skip((7 * 4) + (4 * 8) + (4 * 4));
+	buffer.readString(title);
+	buffer.skip((4 * 4) + 4 + 3 + 8);
+	buffer.readUInt16(cubics);
+	buffer.skip((cubics * 2) + 1 + 4 + 1 + 4 + 2 + 2 + 4);
+	buffer.readInt16(limit);
+	if (!buffer.hasFailed())
+	{
+		info.inventoryLimit = limit;
+	}
+
 	return true;
 }
 }

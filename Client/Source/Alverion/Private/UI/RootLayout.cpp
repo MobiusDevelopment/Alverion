@@ -31,6 +31,9 @@ namespace
 		UCommonActivatableWidgetStack* stack = tree.ConstructWidget<UCommonActivatableWidgetStack>(UCommonActivatableWidgetStack::StaticClass());
 		stack->SetTransitionDuration(layerTransitionSeconds);
 
+		// The screens on a stack take the mouse, the empty stack around them does not, so the action bar beneath can take a dropped item.
+		stack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
 		UOverlaySlot* slot = layers.AddChildToOverlay(stack);
 		slot->SetHorizontalAlignment(HAlign_Fill);
 		slot->SetVerticalAlignment(VAlign_Fill);
@@ -45,6 +48,7 @@ TSharedRef<SWidget> URootLayout::RebuildWidget()
 	{
 		// Four stacks over each other, bottom to top: game, its menu, the front end menus, then modals.
 		UOverlay* layers = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		layers->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 
 		gameLayer = addLayerStack(*WidgetTree, *layers);
 		gameMenuLayer = addLayerStack(*WidgetTree, *layers);
