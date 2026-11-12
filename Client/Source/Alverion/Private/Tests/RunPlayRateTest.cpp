@@ -24,9 +24,9 @@ bool FRunPlayRateTest::RunTest(const FString& parameters)
 	// The jog gives 573 on the men's bodies and 537 on the women's, and the goblin's clip 434 on its short legs.
 	const TCHAR* const jog = TEXT("/Game/Characters/Animations/UAL/Jog_Fwd_Loop.Jog_Fwd_Loop");
 	const TCHAR* const goblinJog = TEXT("/Game/Characters/Animations/UAL/Goblin/Jog_Fwd_Loop_Goblin.Jog_Fwd_Loop_Goblin");
-	const float man = runTestSpeedOf(jog, TEXT("/Game/Characters/MetaHumans/Unpacked/MH_Victor/Body/SKM_MH_Victor_BodyMesh.SKM_MH_Victor_BodyMesh"));
-	const float woman = runTestSpeedOf(jog, TEXT("/Game/Characters/MetaHumans/Unpacked/MH_Ada/Body/SKM_MH_Ada_BodyMesh.SKM_MH_Ada_BodyMesh"));
-	const float goblin = runTestSpeedOf(goblinJog, TEXT("/Game/Characters/MetaHumans/Unpacked/MH_Goblin/Body/SKM_MHC_Goblin_BodyMesh.SKM_MHC_Goblin_BodyMesh"));
+	const float man = runTestSpeedOf(jog, TEXT("/Game/Characters/MetaHumans/Humans/Male/Victor/Body/SKM_MH_Victor_BodyMesh.SKM_MH_Victor_BodyMesh"));
+	const float woman = runTestSpeedOf(jog, TEXT("/Game/Characters/MetaHumans/Humans/Female/Ada/Body/SKM_MH_Ada_BodyMesh.SKM_MH_Ada_BodyMesh"));
+	const float goblin = runTestSpeedOf(goblinJog, TEXT("/Game/Characters/MetaHumans/Goblins/Male/Goblin/Body/SKM_MHC_Goblin_BodyMesh.SKM_MHC_Goblin_BodyMesh"));
 	AddInfo(FString::Printf(TEXT("Measured run speeds: man %.0f, woman %.0f, goblin %.0f cm/s."), man, woman, goblin));
 	TestTrue(TEXT("The jog on a man's body"), FMath::IsNearlyEqual(man, 573.0f, 573.0f * 0.05f));
 	TestTrue(TEXT("The jog on a woman's body"), FMath::IsNearlyEqual(woman, 537.0f, 537.0f * 0.05f));
@@ -65,7 +65,7 @@ bool FRunPlayRateTest::RunTest(const FString& parameters)
 	TestTrue(TEXT("With none measured the last is used"), Appearance::pickMovingMotion(none, 100.0f, fresh) == Appearance::EMotion::Run);
 
 	// The walk clip measures on a body like the run clips, and is slower.
-	const float walk = runTestSpeedOf(TEXT("/Game/Characters/Animations/UAL/Walk_Loop.Walk_Loop"), TEXT("/Game/Characters/MetaHumans/Unpacked/MH_Victor/Body/SKM_MH_Victor_BodyMesh.SKM_MH_Victor_BodyMesh"));
+	const float walk = runTestSpeedOf(TEXT("/Game/Characters/Animations/UAL/Walk_Loop.Walk_Loop"), TEXT("/Game/Characters/MetaHumans/Humans/Male/Victor/Body/SKM_MH_Victor_BodyMesh.SKM_MH_Victor_BodyMesh"));
 	AddInfo(FString::Printf(TEXT("Measured walk speed: man %.0f cm/s."), walk));
 	TestTrue(TEXT("The walk clip travels, slower than the jog"), (walk > 50.0f) && (walk < man));
 

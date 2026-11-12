@@ -26,11 +26,19 @@ Unreal Engine 5 client for L2J Mobius.
 
 The characters are MetaHumans, about 3 GB, so they are not in the repository. Download them here:
 
-https://drive.google.com/file/d/1xUWfGzEfeOrGPYgAkrC8PJ7Jazq2AH8c/view?usp=sharing
+https://drive.google.com/file/d/1JTZIa5qltiwsKLUFXpyVkKNN4TzLhFsZ/view?usp=sharing
 
 Extract the zip at the root of the repository, so that its folders land in `Client/Content/Characters/MetaHumans/` (`Goblin`, `Grooms` and `Unpacked`). Git ignores that folder. Without it the game still runs, with coloured placeholder figures standing in for the characters.
 
 MetaHumans are covered by the Unreal Engine EULA: share the download only with people who have accepted it.
+
+## Equipment
+
+Download the equipment assets here:
+
+https://drive.google.com/file/d/1AeVzf-gDI1gz8xxiXMgTn3Wi4Wn8Rd0j/view?usp=sharing
+
+Extract the zip so that its folders land in `Client/Content/Equipment/`.
 
 ## Animations
 
@@ -43,7 +51,7 @@ Extract the zip so that the clips land in `Client/Content/Characters/Animations/
 ## Running it
 
 1. Run an L2J Mobius login server and game server, with both patches applied and `character_appearance.sql` imported.
-2. Download the MetaHumans and the animations, see above.
+2. Download the MetaHumans, equipment and animations from their respective sections.
 3. Build `Client/Alverion.uproject` with Unreal Engine 5.8 and run it.
 4. Log in. A server with `AutoCreateAccounts` on makes the account the first time.
 

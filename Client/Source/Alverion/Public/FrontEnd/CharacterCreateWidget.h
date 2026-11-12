@@ -2,6 +2,7 @@
 
 #include "CommonActivatableWidget.h"
 #include "Appearance.h"
+#include "Appearance/AppearanceChoices.h"
 #include "CoreMinimal.h"
 
 #include "CharacterCreateWidget.generated.h"
@@ -37,6 +38,12 @@ protected:
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend class FGroomSelectionTest;
+	friend class FElfPlayerCreationTest;
+	friend class FOrcPlayerCreationTest;
+#endif
+
 	UFUNCTION()
 	void handleCreateClicked();
 
@@ -51,6 +58,12 @@ private:
 	void handleNameCommitted(const FText& text, ETextCommit::Type commitMethod);
 
 	// One per choice, because OnClicked carries no payload and a button cannot say which it is.
+	UFUNCTION()
+	void handleSpeciesNextClicked();
+
+	UFUNCTION()
+	void handleSpeciesPrevClicked();
+
 	UFUNCTION()
 	void handleFemaleClicked();
 
@@ -72,6 +85,11 @@ private:
 
 	UFUNCTION()
 	void handleHairColorPrevClicked();
+
+	uint8 chosenHairStyle() const;
+	void cycleHair(int32 step);
+	uint8 chosenEyebrows() const;
+	void cycleEyebrows(int32 step);
 
 	UFUNCTION()
 	void handleHairColorNextClicked();
@@ -161,11 +179,15 @@ private:
 
 	// Male, which is what the screen opens on, on the operator's instruction of 2026-08-13.
 	uint8 _sex = 1;
-	uint8 _eyeColor = 0;
+	static constexpr uint8 speciesCount = static_cast<uint8>(Network::EAppearanceSpecies::Count);
+	uint8 _speciesIndex = 0;
+	uint8 _skinTones[speciesCount] = {};
+	uint8 _eyeColors[speciesCount] = { 0, AppearanceChoices::donorEyeColor, AppearanceChoices::donorEyeColor };
+	TOptional<uint8> _speciesHairStyles[speciesCount][2];
 	uint8 _hairStyle = 0;
 
 	// Zero, which is the brown the groom material was already built as.
-	uint8 _hairColor = 0;
+	uint8 _hairColors[speciesCount] = {};
 
 	// Zero, which is a clean chin.
 	// Kept rather than cleared on a switch to female, since it is packed as zero for her anyway.
@@ -175,6 +197,7 @@ private:
 	// Zero, which is a bare lip. Kept across a switch to female for the reason the beard is.
 	uint8 _mustache = 0;
 	uint8 _eyebrows = 0;
+	TOptional<uint8> _speciesEyebrows[speciesCount][2];
 
 	// The name the last request carried, handed to the select screen once the server accepts it.
 	FString _submittedName;
@@ -182,10 +205,6 @@ private:
 	// Which face of the roster, counted from zero, and filed by sex on the applier's side.
 	// Zero is the first of whichever list the sex picks rather than a face nobody chose.
 	uint8 _head = 0;
-
-	// Zero, which is the skin exactly as the build made it.
-	// A creation screen that opens on an altered face is claiming a choice nobody made.
-	uint8 _skinTone = 0;
 
 	// The two cycler labels, repainted by refreshChoices when their value moves.
 	UPROPERTY()
@@ -205,6 +224,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UTextBlock> _eyebrowsLabel;
+
+	UPROPERTY()
+	TObjectPtr<UTextBlock> _speciesLabel;
 
 	UPROPERTY()
 	TObjectPtr<UTextBlock> _headLabel;

@@ -4,6 +4,15 @@
 
 namespace Network
 {
+enum class EAppearanceSpecies : uint8
+{
+	Human = 0,
+	Elf = 1,
+	Orc = 2,
+	Dwarf = 3,
+	Count
+};
+
 /**
  * How a character looks, beyond what the server itself keeps.
  * The server extension stores these bytes as they are and hands them back in the character list and in CharInfo, so only this client gives them meaning.
@@ -24,6 +33,7 @@ struct NETWORK_API FAppearance
 	uint8 eyebrows = 0;
 	uint8 beard = 0;
 	uint8 mustache = 0;
+	EAppearanceSpecies species = EAppearanceSpecies::Human;
 
 	TArray<uint8> pack() const
 	{
@@ -39,6 +49,9 @@ struct NETWORK_API FAppearance
 		bytes[7] = eyebrows;
 		bytes[8] = beard;
 		bytes[9] = mustache;
+		bytes[10] = static_cast<uint8>(species);
+		// The original elf picker stored its four complexions in the tone byte and always wrote head zero.
+		bytes[11] = species == EAppearanceSpecies::Human ? 0 : 1;
 		return bytes;
 	}
 
@@ -60,6 +73,13 @@ struct NETWORK_API FAppearance
 		out.eyebrows = bytes[7];
 		out.beard = bytes[8];
 		out.mustache = bytes[9];
+		out.species = bytes[10] < static_cast<uint8>(EAppearanceSpecies::Count) ? static_cast<EAppearanceSpecies>(bytes[10]) : EAppearanceSpecies::Human;
+		if ((out.species == EAppearanceSpecies::Elf) && (bytes[11] == 0))
+		{
+			out.head = out.skinTone < 4 ? out.skinTone : 0;
+			out.skinTone = 0;
+		}
+
 		return true;
 	}
 };

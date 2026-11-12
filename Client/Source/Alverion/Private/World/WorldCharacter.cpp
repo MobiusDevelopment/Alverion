@@ -174,9 +174,21 @@ void AWorldCharacter::wear(const Network::FAppearance& appearance)
 		}
 
 		character->_metaHuman = body;
+		character->updateViewHeight();
 		character->_body->SetVisibility(false);
 		body->SetActorHiddenInGame(character->_firstPerson);
 	});
+}
+
+void AWorldCharacter::updateViewHeight()
+{
+	const double scale = (_metaHuman != nullptr) ? Appearance::heightScale(*_metaHuman) : 1.0;
+	const double eyeHeight = capsuleHalfHeightCm + (_firstPerson ? firstPersonArmHeightCm : thirdPersonArmHeightCm);
+	_arm->SetRelativeLocation(FVector(0.0, 0.0, eyeHeight * scale - capsuleHalfHeightCm));
+	if (_portraitCapture != nullptr)
+	{
+		_portraitCapture->SetRelativeLocation(FVector(portraitDistanceCm * scale, 0.0, capsuleHalfHeightCm * (scale - 1.0)));
+	}
 }
 
 UTextureRenderTarget2D* AWorldCharacter::beginPortrait()
@@ -189,7 +201,8 @@ UTextureRenderTarget2D* AWorldCharacter::beginPortrait()
 		// On the capsule, which turns with the body, so the camera always stands in front of the face looking back at it.
 		_portraitCapture = NewObject<USceneCaptureComponent2D>(this);
 		_portraitCapture->SetupAttachment(RootComponent);
-		_portraitCapture->SetRelativeLocationAndRotation(FVector(portraitDistanceCm, 0.0, 0.0), FRotator(0.0, 180.0, 0.0));
+		_portraitCapture->SetRelativeRotation(FRotator(0.0, 180.0, 0.0));
+		updateViewHeight();
 		_portraitCapture->FOVAngle = portraitFieldOfView;
 		_portraitCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
 		_portraitCapture->TextureTarget = target;
@@ -387,7 +400,7 @@ void AWorldCharacter::toggleFirstPerson()
 	GetCharacterMovement()->bOrientRotationToMovement = !_firstPerson;
 
 	// The arm length glides in Tick; the height and the hidden body change at once, so the camera never sits inside the head.
-	_arm->SetRelativeLocation(FVector(0.0f, 0.0f, _firstPerson ? firstPersonArmHeightCm : thirdPersonArmHeightCm));
+	updateViewHeight();
 	_body->SetHiddenInGame(_firstPerson);
 	if (_metaHuman != nullptr)
 	{

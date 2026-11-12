@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-07 20:36\n"
-"PO-Revision-Date: 2026-11-07 20:36\n"
+"POT-Creation-Date: 2026-11-09 17:29\n"
+"PO-Revision-Date: 2026-11-09 17:29\n"
 "Language-Team: \n"
 "Language: el\n"
 "MIME-Version: 1.0\n"
@@ -61,6 +61,13 @@ msgstr "Γκρι"
 msgctxt "ST_Game,charcreate.hair_auburn"
 msgid "Auburn"
 msgstr "Πυρόξανθο"
+
+#. Key:	charcreate.hair_bald
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charcreate.hair_bald"
+msgid "Bald"
+msgstr "Χωρίς μαλλιά"
 
 #. Key:	charcreate.hair_black
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -146,6 +153,13 @@ msgctxt "ST_Game,charcreate.row_moustache"
 msgid "Moustache"
 msgstr "Μουστάκι"
 
+#. Key:	charcreate.row_species
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charcreate.row_species"
+msgid "Race"
+msgstr "Φυλή"
+
 #. Key:	charcreate.row_tone
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
@@ -166,6 +180,34 @@ msgstr "Γυναίκα"
 msgctxt "ST_Game,charcreate.sex_male"
 msgid "Male"
 msgstr "Άνδρας"
+
+#. Key:	charcreate.species_dwarf
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charcreate.species_dwarf"
+msgid "Dwarf"
+msgstr "Νάνος"
+
+#. Key:	charcreate.species_elf
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charcreate.species_elf"
+msgid "Elf"
+msgstr "Ξωτικό"
+
+#. Key:	charcreate.species_human
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charcreate.species_human"
+msgid "Human"
+msgstr "Άνθρωπος"
+
+#. Key:	charcreate.species_orc
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,charcreate.species_orc"
+msgid "Orc"
+msgstr "Ορκ"
 
 #. Key:	charcreate.title
 #. SourceLocation:	Localization/StringTables/ST_Game.csv

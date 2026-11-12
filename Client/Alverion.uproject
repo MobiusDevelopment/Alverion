@@ -17,6 +17,14 @@
 	],
 	"Plugins": [
 		{
+			"Name": "ChaosClothAsset",
+			"Enabled": true
+		},
+		{
+			"Name": "ChaosOutfitAsset",
+			"Enabled": true
+		},
+		{
 			"Name": "CommonUI",
 			"Enabled": true
 		},
@@ -47,6 +55,10 @@
 		},
 		{
 			"Name": "MetaHumanCharacter",
+			"Enabled": true
+		},
+		{
+			"Name": "RigLogic",
 			"Enabled": true
 		},
 		{

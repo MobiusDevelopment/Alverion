@@ -6,11 +6,14 @@
 #include "Animation/AnimationPoseData.h"
 #include "Animation/AttributesRuntime.h"
 #include "Appearance/FootIkAnimInstance.h"
+#include "Appearance/HeadwearHairComponent.h"
 #include "BoneContainer.h"
 #include "BonePose.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/StreamableManager.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -18,8 +21,10 @@
 #include "GroomBindingAsset.h"
 #include "GroomComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Misc/CommandLine.h"
 #include "Misc/MemStack.h"
 #include "Misc/PackageName.h"
+#include "Misc/Parse.h"
 #include "TimerManager.h"
 
 namespace
@@ -209,11 +214,35 @@ namespace
 	static_assert(UE_ARRAY_COUNT(femaleHeads) == AppearanceChoices::heads, "The female head table and the creation screen's count have to agree.");
 	static_assert(UE_ARRAY_COUNT(maleHeads) == AppearanceChoices::heads, "The male head table and the creation screen's count have to agree.");
 
-	const TCHAR* const charactersFolder = TEXT("/Game/Characters/MetaHumans/Unpacked");
-	const TCHAR* const bindingFolder = TEXT("/Game/Characters/MetaHumans/Grooms");
+	const TCHAR* const charactersFolder = TEXT("/Game/Characters/MetaHumans");
+	const TCHAR* const bindingFolder = TEXT("/Game/Characters/MetaHumans/Shared/Grooms");
 	const TCHAR* const groomFolder = TEXT("/MetaHumanCharacter/Optional/Grooms/GroomAssets");
 	const TCHAR* const femaleBaseName = TEXT("MH_HumanFemale");
 	const TCHAR* const maleBaseName = TEXT("MH_HumanMale");
+
+	// A dwarf is a human donor's own class, face, skin and grooms on a dwarf body and face mesh made from that donor, stood broader and shorter by the roster's scale.
+	const TCHAR* const appearanceDwarfFolder = TEXT("/Game/Characters/MetaHumans/Dwarfs");
+	const FVector appearanceDwarfScale(1.12, 1.08, 0.90);
+
+	// The whole standing height against the donor's, since the dwarf mesh is itself shorter than the human one before the scale.
+	constexpr float appearanceDwarfHeightRatio = 0.75f;
+
+	/**
+	 * How far a dwarf rises above each clip, in its own centimetres, measured against its donor's soles on the eight of them.
+	 * Its reference pose stands with the legs spread, which sets its pelvis lower than the straighter legs of the clips reach.
+	 */
+	constexpr float appearanceDwarfStandLift = 1.0f;
+	constexpr float appearanceDwarfWalkLift = 5.8f;
+	constexpr float appearanceDwarfRunLift = 7.3f;
+
+	// The sculpted orc sole extends below the walk clip's original contact.
+	constexpr float appearanceOrcWalkLift = 1.0f;
+
+	// On the body of a donor stood as a dwarf, so telling one costs a name rather than a path.
+	const FName appearanceDwarfTag(TEXT("AlverionDwarf"));
+	const FName appearanceOrcTag(TEXT("AlverionOrc"));
+	const FName starterGarmentTag(TEXT("AlverionStarterGarment"));
+	const FName headwearHairTag(TEXT("AlverionHeadwearHair"));
 
 	/** The baked eye material ignores colour, so the eye slots get an instance of this parametric one instead. */
 	const TCHAR* const parametricEyePath = TEXT("/MetaHumanCharacter/Lookdev_UHM/Eye/Materials/MI_eye_eyeball_unified_MH_preset_left.MI_eye_eyeball_unified_MH_preset_left");
@@ -237,8 +266,9 @@ namespace
 	/** Lashes stay dark on a blonde head, and fuzz is skin to anybody looking. Brows, beard and moustache follow the hair. */
 	const TCHAR* const uncolouredGrooms[] = { TEXT("Eyelashes"), TEXT("Fuzz") };
 
-	/** What each groom component was last asked to wear, so a slow fetch cannot overwrite a later fast one. */
-	TMap<TWeakObjectPtr<UGroomComponent>, FString> wantedGrooms;
+	/** Only the latest pending request for a component can install its groom and colour. */
+	TMap<TWeakObjectPtr<UGroomComponent>, uint64> pendingGrooms;
+	uint64 nextGroomRequest = 0;
 
 	/** Held until done, because a released handle is a cancelled load. */
 	TSharedPtr<FStreamableHandle> warmed;
@@ -259,16 +289,97 @@ namespace
 		return nullptr;
 	}
 
+	/** The body's player, made the first time it is asked for. */
+	UFootIkAnimInstance* footIkOf(USkeletalMeshComponent& mesh)
+	{
+		UFootIkAnimInstance* player = Cast<UFootIkAnimInstance>(mesh.GetAnimInstance());
+		if (player == nullptr)
+		{
+			mesh.SetAnimInstanceClass(UFootIkAnimInstance::StaticClass());
+			player = Cast<UFootIkAnimInstance>(mesh.GetAnimInstance());
+		}
+
+		return player;
+	}
+
+	FString characterFolder(const FString& characterName)
+	{
+		if (characterName == maleBaseName || characterName == femaleBaseName)
+		{
+			return FString(TEXT("Humans/Defaults/")) + (characterName == maleBaseName ? TEXT("Male") : TEXT("Female"));
+		}
+
+		if (characterName == TEXT("MH_Goblin"))
+		{
+			return TEXT("Goblins/Male/Goblin");
+		}
+
+		const bool elf = characterName.StartsWith(TEXT("MH_Elf"));
+		const bool orc = characterName.StartsWith(TEXT("MH_Orc"));
+		if (elf || orc)
+		{
+			const bool male = characterName.Contains(TEXT("Male"), ESearchCase::CaseSensitive);
+			const TCHAR form = characterName[characterName.Len() - 1];
+			const int32 head = form >= TEXT('B') && form <= TEXT('D') ? form - TEXT('A') : 0;
+			const TCHAR* donor = male ? maleHeads[head] : femaleHeads[head];
+			return FString::Printf(TEXT("%s/%s/%s"), orc ? TEXT("Orcs") : TEXT("Elves"), male ? TEXT("Male") : TEXT("Female"), donor);
+		}
+
+		const FString donor = characterName.RightChop(3);
+		for (const TCHAR* maleHead : maleHeads)
+		{
+			if (donor == maleHead)
+			{
+				return TEXT("Humans/Male/") + donor;
+			}
+		}
+
+		return TEXT("Humans/Female/") + donor;
+	}
+
 	FString characterPackage(const FString& characterName)
 	{
-		return FString::Printf(TEXT("%s/%s/BP_%s"), charactersFolder, *characterName, *characterName);
+		return FString::Printf(TEXT("%s/%s/BP_%s"), charactersFolder, *characterFolder(characterName), *characterName);
+	}
+
+	/** A donor's dwarf body or face package, by the donor's character name, MH_ and its first name. */
+	FString dwarfMeshPackage(const FString& characterName, bool face)
+	{
+		const FString donor = characterName.RightChop(3);
+		FString folder = characterFolder(characterName);
+		folder.RemoveFromStart(TEXT("Humans/"));
+		return face ? FString::Printf(TEXT("%s/%s/Face/SKM_MH_%s_FaceMesh_Preview"), appearanceDwarfFolder, *folder, *donor) : FString::Printf(TEXT("%s/%s/Body/SKM_Dwarf_%s_Body"), appearanceDwarfFolder, *folder, *donor);
+	}
+
+	FString dwarfMeshPath(const FString& characterName, bool face)
+	{
+		const FString package = dwarfMeshPackage(characterName, face);
+		return package + TEXT(".") + FPackageName::GetShortName(package);
 	}
 
 	/** The picked head when it is installed, the base body otherwise, and empty when neither is: a fresh clone has no MetaHumans at all. */
 	FString characterNameFor(const Network::FAppearance& appearance)
 	{
+		if ((appearance.species != Network::EAppearanceSpecies::Human) && (appearance.species != Network::EAppearanceSpecies::Dwarf))
+		{
+			static const TCHAR* const suffixes[] = { TEXT(""), TEXT("B"), TEXT("C"), TEXT("D") };
+			static_assert(UE_ARRAY_COUNT(suffixes) == AppearanceChoices::heads);
+			const uint8 head = appearance.head < AppearanceChoices::heads ? appearance.head : 0;
+			const TCHAR* speciesName = appearance.species == Network::EAppearanceSpecies::Orc ? TEXT("MH_Orc") : TEXT("MH_Elf");
+			const FString name = FString(speciesName) + (appearance.male ? TEXT("Male") : TEXT("Female")) + suffixes[head];
+			return FPackageName::DoesPackageExist(characterPackage(name)) ? name : FString();
+		}
+
 		const TCHAR* const* heads = appearance.male ? maleHeads : femaleHeads;
 		const FString headName = FString::Printf(TEXT("MH_%s"), heads[(appearance.head < AppearanceChoices::heads) ? appearance.head : 0]);
+
+		// A dwarf is made from one donor, so the base body cannot stand in for it.
+		if (appearance.species == Network::EAppearanceSpecies::Dwarf)
+		{
+			const bool installed = FPackageName::DoesPackageExist(characterPackage(headName)) && FPackageName::DoesPackageExist(dwarfMeshPackage(headName, false)) && FPackageName::DoesPackageExist(dwarfMeshPackage(headName, true));
+			return installed ? headName : FString();
+		}
+
 		if (FPackageName::DoesPackageExist(characterPackage(headName)))
 		{
 			return headName;
@@ -306,6 +417,11 @@ namespace
 	{
 		// Simulated strands trail to the ground behind a moving body, so the hair rides the head as bound instead.
 		const bool simulated = !groom.SimulationSettings.bOverrideSettings || groom.SimulationSettings.SolverSettings.bEnableSimulation;
+		groom.SetVisibility(true);
+		if (groom.bUseCards != groom.ComponentHasTag(headwearHairTag))
+		{
+			groom.SetUseCards(groom.ComponentHasTag(headwearHairTag));
+		}
 		groom.SimulationSettings.bOverrideSettings = true;
 		groom.SimulationSettings.SolverSettings.bEnableSimulation = false;
 
@@ -316,11 +432,13 @@ namespace
 		}
 	}
 
+	void tintGroom(UGroomComponent& groom, const FHairColour& colour);
+
 	/** Fetched rather than loaded where this stands: a first groom cost a third of a second on the game thread, inside the screen's cross fade. */
-	void wearGroom(UGroomComponent& groom, const FGroom& chosen, const FString& characterName)
+	void wearGroom(UGroomComponent& groom, const FGroom& chosen, const FString& characterName, const FHairColour& colour)
 	{
 		const FString groomPath = FString::Printf(TEXT("%s/%s/%s/%s.%s"), groomFolder, chosen.category, chosen.name, chosen.name, chosen.name);
-		const FString bindingPath = FString::Printf(TEXT("%s/%s/%s_Binding.%s_Binding"), bindingFolder, *characterName, chosen.name, chosen.name);
+		const FString bindingPath = FString::Printf(TEXT("%s/%s/%s_Binding.%s_Binding"), bindingFolder, *characterFolder(characterName), chosen.name, chosen.name);
 
 		UGroomAsset* groomAsset = FindObject<UGroomAsset>(nullptr, *groomPath);
 		UGroomBindingAsset* binding = FindObject<UGroomBindingAsset>(nullptr, *bindingPath);
@@ -330,23 +448,22 @@ namespace
 			return;
 		}
 
-		for (TMap<TWeakObjectPtr<UGroomComponent>, FString>::TIterator entry = wantedGrooms.CreateIterator(); entry; ++entry)
-		{
-			if (!entry.Key().IsValid())
-			{
-				entry.RemoveCurrent();
-			}
-		}
-
 		const TWeakObjectPtr<UGroomComponent> weakGroom(&groom);
-		wantedGrooms.Add(weakGroom, groomPath);
+		const uint64 request = ++nextGroomRequest;
+		pendingGrooms.Add(weakGroom, request);
 
 		TArray<FSoftObjectPath> paths = { FSoftObjectPath(groomPath), FSoftObjectPath(bindingPath) };
-		UAssetManager::GetStreamableManager().RequestAsyncLoad(paths, FStreamableDelegate::CreateLambda([weakGroom, groomPath, bindingPath]()
+		UAssetManager::GetStreamableManager().RequestAsyncLoad(paths, FStreamableDelegate::CreateLambda([weakGroom, groomPath, bindingPath, request, colour]()
 		{
+			const uint64* pending = pendingGrooms.Find(weakGroom);
+			if ((pending == nullptr) || (*pending != request))
+			{
+				return;
+			}
+
+			pendingGrooms.Remove(weakGroom);
 			UGroomComponent* component = weakGroom.Get();
-			const FString* wanted = wantedGrooms.Find(weakGroom);
-			if ((component == nullptr) || (wanted == nullptr) || (*wanted != groomPath))
+			if (component == nullptr)
 			{
 				return;
 			}
@@ -360,24 +477,27 @@ namespace
 			}
 
 			wearLoadedGroom(*component, *loadedGroom, *loadedBinding);
+			tintGroom(*component, colour);
 		}));
 	}
 
 	/** Puts the chosen groom on a slot, or clears it when the choice is out of range, so a reused component never keeps the last character's hair. */
-	void applyGroom(AActor& avatar, USkeletalMeshComponent& face, const TCHAR* slot, TConstArrayView<FGroom> offered, int32 chosen, const FString& characterName)
+	void applyGroom(AActor& avatar, USkeletalMeshComponent& face, const TCHAR* slot, TConstArrayView<FGroom> offered, int32 chosen, const FString& characterName, const FHairColour& colour)
 	{
 		UGroomComponent* groom = findOrCreateGroom(avatar, face, slot);
+		pendingGrooms.Remove(groom);
 		if (!offered.IsValidIndex(chosen))
 		{
-			if (groom->GroomAsset != nullptr)
+			groom->SetVisibility(false);
+			if ((groom->GroomAsset != nullptr) || (groom->BindingAsset != nullptr))
 			{
-				groom->SetGroomAsset(nullptr);
+				groom->SetGroomAsset(nullptr, nullptr);
 			}
 
 			return;
 		}
 
-		wearGroom(*groom, offered[chosen], characterName);
+		wearGroom(*groom, offered[chosen], characterName, colour);
 	}
 
 	/** Every material slot of a groom gets an instance of its own material, since the component may hand back a substituted default that reads no hair parameter. */
@@ -397,6 +517,16 @@ namespace
 				continue;
 			}
 
+			if (groom.ComponentHasTag(headwearHairTag))
+			{
+				const FString name = parent->GetName() + TEXT("_Headwear");
+				UMaterialInterface* clipped = LoadObject<UMaterialInterface>(nullptr, *(TEXT("/Game/Equipment/Shared/Hair/") + name + TEXT(".") + name));
+				if (clipped != nullptr)
+				{
+					parent = clipped;
+				}
+			}
+
 			UMaterialInstanceDynamic* dynamic = Cast<UMaterialInstanceDynamic>(groom.GetMaterial(index));
 			if ((dynamic == nullptr) || (dynamic->Parent != parent))
 			{
@@ -409,10 +539,8 @@ namespace
 		}
 	}
 
-	void applyHairColour(AActor& avatar, const Network::FAppearance& appearance)
+	void applyHairColour(AActor& avatar, const FHairColour& colour)
 	{
-		const FHairColour& colour = hairColours[(appearance.hairColor < AppearanceChoices::hairColors) ? appearance.hairColor : 0];
-
 		TArray<UGroomComponent*> grooms;
 		avatar.GetComponents<UGroomComponent>(grooms);
 		for (UGroomComponent* groom : grooms)
@@ -469,6 +597,19 @@ namespace
 
 	void applyEyes(USkeletalMeshComponent& face, const Network::FAppearance& appearance)
 	{
+		if (appearance.species != Network::EAppearanceSpecies::Human && appearance.eyeColor == AppearanceChoices::donorEyeColor)
+		{
+			for (const FName& slot : { leftEyeSlot, rightEyeSlot })
+			{
+				const int32 index = face.GetMaterialIndex(slot);
+				if (index != INDEX_NONE)
+				{
+					face.SetMaterial(index, nullptr);
+				}
+			}
+			return;
+		}
+
 		const FEyeColour& colour = eyeColours[(appearance.eyeColor < AppearanceChoices::eyeColors) ? appearance.eyeColor : 0];
 		UMaterialInterface* parametric = LoadObject<UMaterialInterface>(nullptr, parametricEyePath);
 		if (parametric == nullptr)
@@ -509,14 +650,51 @@ namespace
 		avatar.GetComponents<USkeletalMeshComponent>(meshes);
 		for (USkeletalMeshComponent* mesh : meshes)
 		{
-			if ((mesh->GetName() != TEXT("Body")) && (mesh->GetName() != TEXT("Face")))
+			if ((mesh->GetName() != TEXT("Body")) && (mesh->GetName() != TEXT("Face")) && !mesh->ComponentHasTag(starterGarmentTag))
 			{
 				mesh->SetVisibility(false);
 			}
 		}
 	}
 
-	void requestNamedBodyClass(const FString& characterName, TFunction<void(UClass*)> whenReady)
+	/** Whether a body wears a dwarf mesh. The same human class stands both as its donor and as the dwarf made from it. */
+	bool wearsDwarf(AActor& avatar)
+	{
+		const USkeletalMeshComponent* body = findMesh(avatar, TEXT("Body"));
+		return (body != nullptr) && body->ComponentHasTag(appearanceDwarfTag);
+	}
+
+	/**
+	 * Stands a human donor as the dwarf made from it: the dwarf body and face, and the roster's proportions.
+	 * The body DNA uses the shortened reference skeleton, so its corrective rig preserves volume at bending joints.
+	 */
+	void shapeDwarf(AActor& avatar, USkeletalMeshComponent& face, const FString& characterName)
+	{
+		USkeletalMeshComponent* body = findMesh(avatar, TEXT("Body"));
+		USkeletalMesh* dwarfBody = LoadObject<USkeletalMesh>(nullptr, *dwarfMeshPath(characterName, false));
+		USkeletalMesh* dwarfFace = LoadObject<USkeletalMesh>(nullptr, *dwarfMeshPath(characterName, true));
+		if ((body == nullptr) || (dwarfBody == nullptr) || (dwarfFace == nullptr))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("The appearance applier could not load the dwarf meshes for %s, so it stands as the human."), *characterName);
+			return;
+		}
+
+		body->SetDisablePostProcessBlueprint(false);
+		if (body->GetSkeletalMeshAsset() != dwarfBody)
+		{
+			body->SetSkeletalMeshAsset(dwarfBody);
+		}
+
+		if (face.GetSkeletalMeshAsset() != dwarfFace)
+		{
+			face.SetSkeletalMeshAsset(dwarfFace);
+		}
+
+		avatar.SetActorScale3D(appearanceDwarfScale);
+		body->ComponentTags.AddUnique(appearanceDwarfTag);
+	}
+
+	void requestNamedBodyClass(const FString& characterName, bool dwarf, TFunction<void(UClass*)> whenReady)
 	{
 		if (characterName.IsEmpty())
 		{
@@ -524,17 +702,36 @@ namespace
 			return;
 		}
 
+		// A dwarf's meshes come with its class, so standing one never loads them on the game thread.
 		const FString path = bodyClassPath(characterName);
-		if (UClass* loaded = FindObject<UClass>(nullptr, *path))
+		TArray<FSoftObjectPath> paths = { FSoftObjectPath(path) };
+		if (dwarf)
 		{
-			whenReady(loaded);
+			paths.Add(FSoftObjectPath(dwarfMeshPath(characterName, false)));
+			paths.Add(FSoftObjectPath(dwarfMeshPath(characterName, true)));
+		}
+
+		bool loaded = true;
+		for (const FSoftObjectPath& wanted : paths)
+		{
+			if (wanted.ResolveObject() == nullptr)
+			{
+				loaded = false;
+				break;
+			}
+		}
+
+		if (loaded)
+		{
+			whenReady(FindObject<UClass>(nullptr, *path));
 			return;
 		}
 
-		// Keyed by path so two screens asking for the same character share the one fetch.
-		pendingBodies.FindOrAdd(path) = UAssetManager::GetStreamableManager().RequestAsyncLoad(FSoftObjectPath(path), FStreamableDelegate::CreateLambda([path, whenReady]()
+		// Keyed by what is fetched so two screens asking for the same character share the one fetch.
+		const FString key = dwarf ? (path + TEXT("+Dwarf")) : path;
+		pendingBodies.FindOrAdd(key) = UAssetManager::GetStreamableManager().RequestAsyncLoad(paths, FStreamableDelegate::CreateLambda([key, path, whenReady]()
 		{
-			pendingBodies.Remove(path);
+			pendingBodies.Remove(key);
 			whenReady(FindObject<UClass>(nullptr, *path));
 		}));
 	}
@@ -713,7 +910,11 @@ namespace Appearance
 
 	namespace
 	{
-		/** What a run clip measures on a body, once: the first body to use a clip pays for the measurement, and a clip that cannot be measured is said so a single time. */
+		/**
+		 * What a run clip measures on a body, once: the first body to use a clip pays for the measurement, and a clip that cannot be measured is said so a single time.
+		 * The measurement is on the mesh's own bones, so a body standing larger in the world, as an orc does, strides that much further.
+		 * A body faces +Y in its own space, so its depth scale is the one a stride covers: a dwarf stands broader than it stands deep.
+		 */
 		float runClipSpeed(const UAnimationAsset& clip, const USkeletalMeshComponent& body)
 		{
 			static TMap<FObjectKey, TMap<FObjectKey, float>> measured;
@@ -724,10 +925,11 @@ namespace Appearance
 				return 0.0f;
 			}
 
+			const float scale = static_cast<float>(body.GetComponentScale().Y);
 			TMap<FObjectKey, float>& onBodies = measured.FindOrAdd(FObjectKey(&clip));
 			if (const float* known = onBodies.Find(FObjectKey(mesh)))
 			{
-				return *known;
+				return *known * scale;
 			}
 
 			const float speed = measureRunSpeed(clip, *mesh);
@@ -737,7 +939,7 @@ namespace Appearance
 			}
 
 			onBodies.Add(FObjectKey(mesh), speed);
-			return speed;
+			return speed * scale;
 		}
 	}
 
@@ -850,24 +1052,45 @@ namespace Appearance
 			return;
 		}
 
-		UFootIkAnimInstance* player = Cast<UFootIkAnimInstance>(mesh->GetAnimInstance());
+		UFootIkAnimInstance* player = footIkOf(*mesh);
 		if (player == nullptr)
 		{
-			mesh->SetAnimInstanceClass(UFootIkAnimInstance::StaticClass());
-			player = Cast<UFootIkAnimInstance>(mesh->GetAnimInstance());
-			if (player == nullptr)
-			{
-				return;
-			}
+			return;
 		}
 
 		// Standing feet find the ground. A running stride on a slope puts one foot far above the other, and bending to both folds the front leg, so running keeps the clip.
 		// So do falling and swimming, and the goblin's clips already meet the ground it tilts to.
 		player->grounded = (motion == EMotion::Idle);
+		player->plantFeet = (motion == EMotion::Walk) && (mesh->ComponentHasTag(appearanceDwarfTag) || mesh->ComponentHasTag(appearanceOrcTag));
+		float lift = 0.0f;
+		if (mesh->ComponentHasTag(appearanceDwarfTag))
+		{
+			lift = (motion == EMotion::Idle) ? appearanceDwarfStandLift : (motion == EMotion::Walk) ? appearanceDwarfWalkLift : (motion == EMotion::Run) ? appearanceDwarfRunLift : 0.0f;
+		}
+		else if (motion == EMotion::Walk)
+		{
+			if (mesh->ComponentHasTag(appearanceOrcTag))
+			{
+				lift = appearanceOrcWalkLift;
+			}
+		}
+
+		player->lift = lift;
 		if (player->GetAnimationAsset() != clip)
 		{
 			player->SetAnimationAsset(clip, true);
 			player->SetPlaying(true);
+
+			// Single-node clip changes jump the pose, so cloth discards its previous collision history.
+			TInlineComponentArray<USkeletalMeshComponent*> garments;
+			body.GetComponents(garments);
+			for (USkeletalMeshComponent* garment : garments)
+			{
+				if (garment->ComponentHasTag(starterGarmentTag))
+				{
+					garment->ForceClothNextUpdateTeleportAndReset();
+				}
+			}
 		}
 
 		// The rate changes the pace and never the phase, so it is set on its own and the clip is not started over.
@@ -877,6 +1100,343 @@ namespace Appearance
 		{
 			player->SetPlayRate(rate);
 		}
+	}
+
+	bool dressStarter(AActor& avatar, const Network::FAppearance& appearance, const FString& pieceOnly, bool fallback)
+	{
+		USkeletalMeshComponent* body = findMesh(avatar, TEXT("Body"));
+		if (body == nullptr)
+		{
+			return false;
+		}
+
+		USkeletalMesh* actualBody = body->GetSkeletalMeshAsset();
+		if (actualBody == nullptr)
+		{
+			return false;
+		}
+
+		FString race;
+		switch (appearance.species)
+		{
+			case Network::EAppearanceSpecies::Human:
+			{
+				race = TEXT("Human");
+				break;
+			}
+			case Network::EAppearanceSpecies::Elf:
+			{
+				race = TEXT("Elf");
+				break;
+			}
+			case Network::EAppearanceSpecies::Orc:
+			{
+				race = TEXT("Orc");
+				break;
+			}
+			case Network::EAppearanceSpecies::Dwarf:
+			{
+				race = TEXT("Dwarf");
+				break;
+			}
+			default:
+			{
+				return false;
+			}
+		}
+
+		const TCHAR* const names[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Boots"), TEXT("BreastWrap"), TEXT("Braies") };
+		const bool pieceFiltered = !pieceOnly.IsEmpty();
+		bool validPiece = !pieceFiltered;
+		for (const TCHAR* name : names)
+		{
+			validPiece |= pieceOnly == name;
+		}
+
+		if (!validPiece || (appearance.male && pieceOnly == TEXT("BreastWrap")))
+		{
+			return false;
+		}
+
+		const uint8 head = appearance.head < AppearanceChoices::heads ? appearance.head : 0;
+		const FString headDonor = appearance.male ? maleHeads[head] : femaleHeads[head];
+		FString donor = appearance.male ? TEXT("Victor") : TEXT("Jelena");
+		if (appearance.species == Network::EAppearanceSpecies::Dwarf)
+		{
+			donor = headDonor;
+		}
+		else if (appearance.species == Network::EAppearanceSpecies::Orc)
+		{
+			if (appearance.male && head > 0)
+			{
+				donor = maleHeads[1];
+			}
+		}
+
+		const FString folder = TEXT("/Game/Equipment/Clothing/Villager/Rags/") + race + TEXT("/");
+		const FReferenceSkeleton& bodyReference = actualBody->GetRefSkeleton();
+		const int32 bodyBoneCount = bodyReference.GetNum();
+		const TArray<FTransform>& bodyRefPose = bodyReference.GetRefBonePose();
+		USkeletalMesh* pieces[UE_ARRAY_COUNT(names)] = {};
+		bool complete = true;
+		for (int32 index = 0; index < UE_ARRAY_COUNT(names); index++)
+		{
+			if ((appearance.male && index == 5) || (pieceFiltered && pieceOnly != names[index]))
+			{
+				continue;
+			}
+
+			const TCHAR* meshPiece = index == 0 ? TEXT("Hat_Cowboy") : index == 5 ? TEXT("CroppedTop") : index == 6 ? TEXT("Pants") : names[index];
+			const FString name = FString(TEXT("SKM_Villager_")) + meshPiece;
+			const FString fitDonor = index == 0 ? headDonor : donor;
+			const FString path = folder + fitDonor + TEXT("/") + name + TEXT(".") + name;
+			USkeletalMesh* piece = LoadObject<USkeletalMesh>(nullptr, *path);
+			if (piece == nullptr)
+			{
+				complete = false;
+				UE_LOG(LogTemp, Warning, TEXT("The starter garment is missing: %s"), *path);
+				continue;
+			}
+
+			const FReferenceSkeleton& reference = piece->GetRefSkeleton();
+			const int32 boneCount = reference.GetNum();
+			const TArray<FTransform>& refPose = reference.GetRefBonePose();
+			bool compatible = boneCount == bodyBoneCount;
+			for (int32 boneIndex = 0; compatible && boneIndex < boneCount; boneIndex++)
+			{
+				const int32 bodyIndex = bodyReference.FindBoneIndex(reference.GetBoneName(boneIndex));
+				if (bodyIndex == INDEX_NONE)
+				{
+					compatible = false;
+					break;
+				}
+
+				compatible = refPose[boneIndex].Equals(bodyRefPose[bodyIndex], 0.001);
+				const int32 parent = reference.GetParentIndex(boneIndex);
+				const int32 bodyParent = bodyReference.GetParentIndex(bodyIndex);
+				compatible &= (parent == INDEX_NONE) == (bodyParent == INDEX_NONE);
+				if (parent != INDEX_NONE && bodyParent != INDEX_NONE)
+				{
+					compatible &= reference.GetBoneName(parent) == bodyReference.GetBoneName(bodyParent);
+				}
+			}
+
+			if (!compatible)
+			{
+				complete = false;
+				UE_LOG(LogTemp, Warning, TEXT("The starter garment %s does not match the actual body %s."), *path, *actualBody->GetPathName());
+				continue;
+			}
+
+			pieces[index] = piece;
+		}
+
+		bool glovesVisible = false;
+		bool hatVisible = false;
+		bool legLayerVisible = false;
+		bool torsoLayerVisible = false;
+		for (int32 index = 0; index < UE_ARRAY_COUNT(names); index++)
+		{
+			const FName name(*(FString(TEXT("SKM_Villager_")) + names[index]));
+			USkeletalMeshComponent* garment = FindObjectFast<USkeletalMeshComponent>(&avatar, name);
+			if (pieces[index] == nullptr)
+			{
+				if (garment != nullptr && garment->ComponentHasTag(starterGarmentTag))
+				{
+					garment->SetVisibility(false);
+					garment->bDisableClothSimulation = true;
+					garment->SetComponentTickEnabled(false);
+				}
+				continue;
+			}
+
+			if (garment == nullptr)
+			{
+				garment = NewObject<USkeletalMeshComponent>(&avatar, name);
+				avatar.AddInstanceComponent(garment);
+				garment->ComponentTags.Add(starterGarmentTag);
+				garment->SetupAttachment(body);
+			}
+
+			if (!garment->ComponentHasTag(starterGarmentTag))
+			{
+				complete = false;
+				continue;
+			}
+
+			const bool visible = pieceFiltered || (index < 5 ? !fallback : index == 5 ? fallback || pieces[1] == nullptr : fallback || pieces[2] == nullptr);
+			if (garment->GetSkeletalMeshAsset() != pieces[index])
+			{
+				garment->SetSkeletalMeshAsset(pieces[index]);
+			}
+
+			if (index >= 5)
+			{
+				for (int32 slot = 0; slot < garment->GetNumMaterials(); slot++)
+				{
+					UMaterialInstanceDynamic* linen = garment->CreateDynamicMaterialInstance(slot);
+					if (linen != nullptr)
+					{
+						for (const FName parameter : { FName(TEXT("C_color")), FName(TEXT("diffuse_color_1")), FName(TEXT("diffuse_color_2")), FName(TEXT("B_diffuse_color_1")) })
+						{
+							linen->SetVectorParameterValue(parameter, FLinearColor(0.38f, 0.315f, 0.23f));
+						}
+					}
+				}
+			}
+
+			garment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			garment->SetLeaderPoseComponent(body);
+			garment->UnbindClothFromLeaderPoseComponent();
+			garment->SetAllowClothActors(true);
+			garment->bDisableClothSimulation = !visible;
+			garment->ClothBlendWeight = 1.0f;
+			garment->bUseBoundsFromLeaderPoseComponent = true;
+			garment->SetVisibility(visible);
+			garment->SetComponentTickEnabled(visible);
+			if (!garment->IsRegistered())
+			{
+				garment->RegisterComponent();
+			}
+
+			hatVisible |= visible && index == 0;
+			legLayerVisible |= visible && (index == 2 || index == 6);
+			torsoLayerVisible |= visible && index == 1;
+			glovesVisible |= visible && index == 3;
+		}
+
+		UGroomComponent* hair = FindObjectFast<UGroomComponent>(&avatar, TEXT("Hair"));
+		if (hair != nullptr)
+		{
+			if (hatVisible)
+			{
+				hair->ComponentTags.AddUnique(headwearHairTag);
+			}
+			else
+			{
+				hair->ComponentTags.Remove(headwearHairTag);
+			}
+
+			if (hair->bUseCards != hatVisible)
+			{
+				hair->SetUseCards(hatVisible);
+			}
+			hair->SetVisibility(hair->GroomAsset != nullptr);
+			tintGroom(*hair, hairColours[appearance.hairColor < AppearanceChoices::hairColors ? appearance.hairColor : 0]);
+			UHeadwearHairComponent* clipping = FindObjectFast<UHeadwearHairComponent>(&avatar, TEXT("HeadwearHair"));
+			if (clipping == nullptr)
+			{
+				clipping = NewObject<UHeadwearHairComponent>(&avatar, TEXT("HeadwearHair"));
+				avatar.AddInstanceComponent(clipping);
+				clipping->RegisterComponent();
+			}
+
+			clipping->configure(hair, body, hatVisible ? FindObjectFast<USkeletalMeshComponent>(&avatar, TEXT("SKM_Villager_Hat")) : nullptr);
+		}
+
+		const FName weaponName(TEXT("StarterWoodenSword"));
+		const FName carryBone(TEXT("pelvis"));
+		UStaticMeshComponent* weapon = FindObjectFast<UStaticMeshComponent>(&avatar, weaponName);
+		UStaticMesh* sword = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Equipment/Weapons/StarterWoodenSword/SM_StarterWoodenSword.SM_StarterWoodenSword"));
+		if (sword == nullptr || !body->DoesSocketExist(carryBone) || !body->DoesSocketExist(TEXT("thigh_l")) || !body->DoesSocketExist(TEXT("thigh_r")))
+		{
+			complete = false;
+			if (weapon != nullptr)
+			{
+				weapon->SetVisibility(false);
+			}
+		}
+		else
+		{
+			if (weapon == nullptr)
+			{
+				weapon = NewObject<UStaticMeshComponent>(&avatar, weaponName);
+				avatar.AddInstanceComponent(weapon);
+				weapon->SetupAttachment(body, carryBone);
+			}
+
+			const FTransform carryReference(actualBody->GetComposedRefPoseMatrix(carryBone));
+			const FVector leftHip = actualBody->GetComposedRefPoseMatrix(FName(TEXT("thigh_l"))).GetOrigin();
+			const FVector rightHip = actualBody->GetComposedRefPoseMatrix(FName(TEXT("thigh_r"))).GetOrigin();
+			const FVector hipSpan = leftHip - rightHip;
+			const FVector left = FVector(hipSpan.X, hipSpan.Y, 0.0).GetSafeNormal();
+			const FVector forward = FVector::CrossProduct(FVector::UpVector, left);
+			const FVector bladeDirection = (-FVector::UpVector - forward * 0.28).GetSafeNormal();
+			const FVector grip = leftHip + FVector::UpVector * 12.0 + left * 14.0 + forward * 2.0;
+			const FTransform carry(FRotationMatrix::MakeFromZX(bladeDirection, forward).ToQuat(), grip);
+			if (weapon->GetAttachParent() != body || weapon->GetAttachSocketName() != carryBone)
+			{
+				weapon->AttachToComponent(body, FAttachmentTransformRules::KeepRelativeTransform, carryBone);
+			}
+
+			weapon->SetStaticMesh(sword);
+			weapon->SetAbsolute(false, false, true);
+			weapon->SetRelativeTransform(carry.GetRelativeTransform(carryReference));
+			weapon->SetWorldScale3D(FVector(heightScale(avatar)));
+			weapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			weapon->SetVisibility(!pieceFiltered && !fallback);
+			if (!weapon->IsRegistered())
+			{
+				weapon->RegisterComponent();
+			}
+		}
+
+		const FString profileName = TEXT("MI_Coverage_") + race + TEXT("_") + donor;
+		const FString profilePath = TEXT("/Game/Equipment/Shared/Coverage/") + profileName + TEXT(".") + profileName;
+		UMaterialInterface* profile = LoadObject<UMaterialInterface>(nullptr, *profilePath);
+		const int32 bodySlot = body->GetMaterialIndex(bodySkinSlot);
+		if (profile == nullptr || bodySlot == INDEX_NONE)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("The starter coverage profile or body skin slot is missing: %s"), *profilePath);
+			return false;
+		}
+
+		UMaterialInstanceDynamic* coverage = Cast<UMaterialInstanceDynamic>(body->GetMaterial(bodySlot));
+		if (coverage == nullptr || coverage->Parent != profile)
+		{
+			coverage = UMaterialInstanceDynamic::Create(profile, &avatar);
+			coverage->CopyMaterialUniformParameters(body->GetMaterial(bodySlot));
+			body->SetMaterial(bodySlot, coverage);
+		}
+
+		for (const FName parameter : { FName(TEXT("CoverageFootZ")), FName(TEXT("CoverageHandCutoff")), FName(TEXT("CoverageHandRadius")), FName(TEXT("CoveragePantsMinZ")), FName(TEXT("CoveragePantsMaxZ")), FName(TEXT("CoveragePantsRadiusX")) })
+		{
+			float value = 0.0f;
+			if (profile->GetScalarParameterValue(parameter, value))
+			{
+				coverage->SetScalarParameterValue(parameter, value);
+			}
+		}
+
+		for (const FName parameter : { FName(TEXT("CoverageWristL")), FName(TEXT("CoverageWristR")), FName(TEXT("CoverageAxisL")), FName(TEXT("CoverageAxisR")) })
+		{
+			FLinearColor value;
+			if (profile->GetVectorParameterValue(parameter, value))
+			{
+				coverage->SetVectorParameterValue(parameter, value);
+			}
+		}
+
+		coverage->SetScalarParameterValue(TEXT("FootCoverage"), 0.0f);
+		coverage->SetScalarParameterValue(TEXT("CoverageHandCutoff"), -0.5f);
+		USkeletalMesh* legLayer = pieces[2] != nullptr ? pieces[2] : pieces[6];
+		USkeletalMesh* torsoLayer = pieces[1] != nullptr ? pieces[1] : pieces[5];
+		USkeletalMesh* lowestLayer = legLayerVisible ? legLayer : torsoLayer;
+		if (lowestLayer != nullptr)
+		{
+			const float minimumZ = lowestLayer->GetImportedBounds().GetBox().Min.Z + 2.0f;
+			const FName upperBone = torsoLayerVisible ? FName(TEXT("spine_05")) : FName(TEXT("spine_01"));
+			const float maximumZ = actualBody->GetComposedRefPoseMatrix(upperBone).GetOrigin().Z - 2.0f;
+			const float torsoRadius = FMath::Abs(actualBody->GetComposedRefPoseMatrix(FName(TEXT("upperarm_l"))).GetOrigin().X);
+			const float hipRadius = FMath::Abs(actualBody->GetComposedRefPoseMatrix(FName(TEXT("thigh_l"))).GetOrigin().X) + 8.0f;
+			coverage->SetScalarParameterValue(TEXT("CoveragePantsMinZ"), minimumZ);
+			coverage->SetScalarParameterValue(TEXT("CoveragePantsMaxZ"), maximumZ);
+			coverage->SetScalarParameterValue(TEXT("CoveragePantsRadiusX"), FMath::Max(torsoRadius, hipRadius));
+		}
+
+		coverage->SetScalarParameterValue(TEXT("HandCoverage"), glovesVisible ? 1.0f : 0.0f);
+		coverage->SetScalarParameterValue(TEXT("PantsCoverage"), legLayerVisible || torsoLayerVisible ? 1.0f : 0.0f);
+		return complete;
 	}
 
 	void apply(AActor& avatar, const Network::FAppearance& appearance)
@@ -890,17 +1450,63 @@ namespace Appearance
 		}
 
 		undress(avatar);
+
+		// Before the skin and the grooms, which dress whichever meshes the body wears.
+		if (appearance.species == Network::EAppearanceSpecies::Dwarf)
+		{
+			shapeDwarf(avatar, *face, characterName);
+		}
+
+		// The body's own proportions play on every clip, so its player keeps them.
+		// A dwarf stands on its standing lift until a clip asks for another.
+		USkeletalMeshComponent* body = findMesh(avatar, TEXT("Body"));
+		UFootIkAnimInstance* player = (body != nullptr) ? footIkOf(*body) : nullptr;
+		if (player != nullptr)
+		{
+			player->lift = wearsDwarf(avatar) ? appearanceDwarfStandLift : 0.0f;
+			player->plantFeet = false;
+		}
+
+		if (appearance.species == Network::EAppearanceSpecies::Orc)
+		{
+			face->SetDisablePostProcessBlueprint(true);
+			if (body != nullptr)
+			{
+				body->ComponentTags.AddUnique(appearanceOrcTag);
+			}
+		}
+		else if (body != nullptr)
+		{
+			body->ComponentTags.Remove(appearanceOrcTag);
+		}
+
 		applySkin(avatar, *face, appearance);
 		applyEyes(*face, appearance);
-		applyGroom(avatar, *face, TEXT("Hair"), hairStyles, appearance.hairStyle, characterName);
-		applyGroom(avatar, *face, TEXT("Eyebrows"), eyebrowStyles, appearance.eyebrows, characterName);
+
+		const FHairColour& colour = hairColours[(appearance.hairColor < AppearanceChoices::hairColors) ? appearance.hairColor : 0];
+		const int32 hairStyle = (appearance.hairStyle == AppearanceChoices::baldHairStyle) ? INDEX_NONE : appearance.hairStyle;
+		applyGroom(avatar, *face, TEXT("Hair"), hairStyles, hairStyle, characterName, colour);
+		applyGroom(avatar, *face, TEXT("Eyebrows"), eyebrowStyles, appearance.eyebrows, characterName, colour);
 
 		// Zero is bare, so the byte is one ahead of the list, and only men wear either, whatever a byte says.
-		applyGroom(avatar, *face, TEXT("Beard"), beards, appearance.male ? (appearance.beard - 1) : -1, characterName);
-		applyGroom(avatar, *face, TEXT("Mustache"), mustaches, appearance.male ? (appearance.mustache - 1) : -1, characterName);
+		applyGroom(avatar, *face, TEXT("Beard"), beards, appearance.male ? (appearance.beard - 1) : -1, characterName, colour);
+		applyGroom(avatar, *face, TEXT("Mustache"), mustaches, appearance.male ? (appearance.mustache - 1) : -1, characterName, colour);
 
 		// After the grooms, since a groom just swapped brings its own materials with it.
-		applyHairColour(avatar, appearance);
+		applyHairColour(avatar, colour);
+		FString pieceOnly;
+		bool fallback = false;
+#if WITH_DEV_AUTOMATION_TESTS
+		if (FParse::Param(FCommandLine::Get(), TEXT("WardrobePreview")))
+		{
+			FParse::Value(FCommandLine::Get(), TEXT("WardrobePiece="), pieceOnly);
+			fallback = FParse::Param(FCommandLine::Get(), TEXT("WardrobeFallback"));
+		}
+#endif
+		if (!dressStarter(avatar, appearance, pieceOnly, fallback))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("The starter outfit could not be fully applied to %s."), *avatar.GetName());
+		}
 	}
 
 	void warm()
@@ -919,7 +1525,23 @@ namespace Appearance
 
 	void requestBodyClass(const Network::FAppearance& appearance, TFunction<void(UClass*)> whenReady)
 	{
-		requestNamedBodyClass(characterNameFor(appearance), MoveTemp(whenReady));
+		requestNamedBodyClass(characterNameFor(appearance), appearance.species == Network::EAppearanceSpecies::Dwarf, MoveTemp(whenReady));
+	}
+
+	float heightScale(AActor& body)
+	{
+		if (wearsDwarf(body))
+		{
+			return appearanceDwarfHeightRatio;
+		}
+
+		const USceneComponent* root = body.GetRootComponent();
+		return (root != nullptr) ? static_cast<float>(root->GetRelativeScale3D().Z) : 1.0f;
+	}
+
+	bool sameShape(AActor& body, const Network::FAppearance& appearance)
+	{
+		return wearsDwarf(body) == (appearance.species == Network::EAppearanceSpecies::Dwarf);
 	}
 
 	void attachTo(AActor& host, const Network::FAppearance& appearance, const FVector& feetOffset, TFunction<void(AActor*)> whenAttached, const FString& authoredBody)
@@ -936,7 +1558,8 @@ namespace Appearance
 		}
 
 		const FString characterName = useAuthoredBody ? authoredBody : characterNameFor(appearance);
-		requestNamedBodyClass(characterName, [weakHost, appearance, feetOffset, whenAttached, useAuthoredBody](UClass* bodyClass)
+		const bool dwarf = !useAuthoredBody && (appearance.species == Network::EAppearanceSpecies::Dwarf);
+		requestNamedBodyClass(characterName, dwarf, [weakHost, appearance, feetOffset, whenAttached, useAuthoredBody](UClass* bodyClass)
 		{
 			AActor* hostActor = weakHost.Get();
 			if (hostActor == nullptr)

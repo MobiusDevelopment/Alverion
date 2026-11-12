@@ -4,9 +4,11 @@
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Appearance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "FrontEnd/FrontEndGameMode.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -33,8 +35,9 @@ bool FCharacterSelectionIdleTest::RunTest(const FString& parameters)
 	{
 		Network::FAppearance appearance;
 		appearance.male = male;
-		const FString name = male ? TEXT("MH_HumanMale") : TEXT("MH_HumanFemale");
-		const FString path = FString::Printf(TEXT("/Game/Characters/MetaHumans/Unpacked/%s/BP_%s.BP_%s_C"), *name, *name, *name);
+		const FString donor = male ? TEXT("Victor") : TEXT("Jelena");
+		const FString name = TEXT("MH_") + donor;
+		const FString path = FString::Printf(TEXT("/Game/Characters/MetaHumans/Humans/%s/%s/BP_%s.BP_%s_C"), male ? TEXT("Male") : TEXT("Female"), *donor, *name, *name);
 		UClass* avatarClass = LoadClass<AActor>(nullptr, *path);
 		if (!TestNotNull(*name, avatarClass))
 		{
@@ -96,15 +99,59 @@ bool FCharacterSelectionIdleTest::RunTest(const FString& parameters)
 		frontEnd->standAvatar(EAvatarSpot::Select, avatarClass, appearance);
 		TestTrue(TEXT("Refreshing a selection preserves the avatar"), frontEnd->_avatar == avatar);
 		TestEqual(TEXT("Refreshing a selection preserves the idle phase"), body->GetPosition(), wrapped);
-		frontEnd->standAvatar(EAvatarSpot::Create, avatarClass, appearance);
-		USkeletalMeshComponent* creationBody = FindObjectFast<USkeletalMeshComponent>(frontEnd->_avatar.Get(), TEXT("Body"));
-		if (!TestNotNull(TEXT("Creation owns an assembled skeletal Body"), creationBody))
+		for (const EAvatarSpot spot : { EAvatarSpot::Create, EAvatarSpot::Select, EAvatarSpot::Create })
 		{
-			return false;
-		}
+			frontEnd->standAvatar(spot, avatarClass, appearance);
+			frontEnd->standAvatar(spot, avatarClass, appearance);
+			AActor* preview = frontEnd->_avatar;
+			USkeletalMeshComponent* previewBody = FindObjectFast<USkeletalMeshComponent>(preview, TEXT("Body"));
+			if (!TestNotNull(TEXT("The menu preview owns an assembled skeletal Body"), previewBody))
+			{
+				return false;
+			}
 
-		UAnimSingleNodeInstance* creationPlayer = creationBody->GetSingleNodeInstance();
-		TestTrue(TEXT("Creation plays the same relaxed standing idle"), (creationPlayer != nullptr) && (creationPlayer->GetCurrentAsset() == idle));
+			const bool creation = spot == EAvatarSpot::Create;
+			UAnimSingleNodeInstance* previewPlayer = previewBody->GetSingleNodeInstance();
+			TestTrue(TEXT("Both menu screens retain the relaxed standing idle"), (previewPlayer != nullptr) && (previewPlayer->GetCurrentAsset() == idle));
+			const TCHAR* const pieces[] = { TEXT("Hat"), TEXT("Shirt"), TEXT("Pants"), TEXT("Gloves"), TEXT("Boots"), TEXT("BreastWrap"), TEXT("Braies") };
+			for (int32 index = 0; index < UE_ARRAY_COUNT(pieces); index++)
+			{
+				if (male && index == 5)
+				{
+					continue;
+				}
+
+				USkeletalMeshComponent* garment = FindObjectFast<USkeletalMeshComponent>(preview, FName(*(FString(TEXT("SKM_Villager_")) + pieces[index])));
+				if (!TestNotNull(TEXT("The menu preview owns each applicable garment"), garment))
+				{
+					return false;
+				}
+
+				const FString meshPiece = index == 0 ? TEXT("Hat_Cowboy") : index == 5 ? TEXT("CroppedTop") : index == 6 ? TEXT("Pants") : pieces[index];
+				const FString meshName = TEXT("SKM_Villager_") + meshPiece;
+				const FString meshPath = TEXT("/Game/Equipment/Clothing/Villager/Rags/Human/") + donor + TEXT("/") + meshName + TEXT(".") + meshName;
+				TestEqual(TEXT("Menu previews use the accepted outfit without a preview flag"), garment->GetSkeletalMeshAsset()->GetPathName(), meshPath);
+				TestEqual(FString::Printf(TEXT("%s shows %s only in its correct menu context"), male ? TEXT("Male") : TEXT("Female"), pieces[index]), garment->IsVisible(), creation ? index >= 5 : index < 5);
+			}
+
+			UStaticMeshComponent* sword = FindObjectFast<UStaticMeshComponent>(preview, TEXT("StarterWoodenSword"));
+			if (!TestNotNull(TEXT("The menu preview owns its starter sword"), sword))
+			{
+				return false;
+			}
+
+			TestEqual(TEXT("Only character selection shows the sword"), sword->IsVisible(), !creation);
+			UMaterialInstanceDynamic* coverage = Cast<UMaterialInstanceDynamic>(previewBody->GetMaterial(previewBody->GetMaterialIndex(TEXT("body_shader_shader"))));
+			if (!TestNotNull(TEXT("The menu preview has body coverage controls"), coverage))
+			{
+				return false;
+			}
+
+			for (const FName parameter : { FName(TEXT("FootCoverage")), FName(TEXT("HandCoverage")), FName(TEXT("PantsCoverage")) })
+			{
+				TestEqual(TEXT("Creation restores the skin hidden beneath equipment"), coverage->K2_GetScalarParameterValue(parameter), parameter == FName(TEXT("FootCoverage")) ? 0.0f : parameter == FName(TEXT("PantsCoverage")) ? 1.0f : creation ? 0.0f : 1.0f);
+			}
+		}
 	}
 
 	return true;

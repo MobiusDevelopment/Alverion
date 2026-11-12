@@ -35,7 +35,7 @@ bool FFootIkTest::RunTest(const FString& parameters)
 		GEngine->DestroyWorldContext(world);
 	};
 
-	UClass* character = LoadClass<AActor>(nullptr, *FString::Printf(TEXT("/Game/Characters/MetaHumans/Unpacked/MH_%s/BP_MH_%s.BP_MH_%s_C"), *parameters, *parameters, *parameters));
+	UClass* character = LoadClass<AActor>(nullptr, *FString::Printf(TEXT("/Game/Characters/MetaHumans/Humans/%s/%s/BP_MH_%s.BP_MH_%s_C"), parameters == TEXT("Victor") ? TEXT("Male") : TEXT("Female"), *parameters, *parameters, *parameters));
 	if (!TestNotNull(TEXT("The character is installed"), character))
 	{
 		return false;

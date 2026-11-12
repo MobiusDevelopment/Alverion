@@ -43,6 +43,8 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type reason) override;
 
 private:
+	void updateViewHeight();
+
 	void moveForward();
 	void moveBackward();
 	void moveLeft();

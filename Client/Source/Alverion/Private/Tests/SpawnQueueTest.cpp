@@ -39,7 +39,7 @@ bool FSpawnQueueTest::RunTest(const FString& parameters)
 	};
 
 	// Held in memory first, so the bodies wait on the queue alone and not on a fetch.
-	UClass* townsperson = LoadClass<AActor>(nullptr, TEXT("/Game/Characters/MetaHumans/Unpacked/MH_Victor/BP_MH_Victor.BP_MH_Victor_C"));
+	UClass* townsperson = LoadClass<AActor>(nullptr, TEXT("/Game/Characters/MetaHumans/Humans/Male/Victor/BP_MH_Victor.BP_MH_Victor_C"));
 	if (!TestNotNull(TEXT("The townsperson is installed"), townsperson))
 	{
 		return false;

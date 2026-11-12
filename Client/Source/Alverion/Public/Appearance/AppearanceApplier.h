@@ -74,6 +74,18 @@ namespace Appearance
 	/** Applies what it can and leaves the rest: a missing groom or eye material is logged and skipped, since a bald character beats no character. */
 	ALVERION_API void apply(AActor& avatar, const Network::FAppearance& appearance);
 
+	/** Dresses the actual body in equipment-owned starter garments, retaining separate cloth simulation and reusing its components. Diagnostic selections hide the other pieces. */
+	ALVERION_API bool dressStarter(AActor& avatar, const Network::FAppearance& appearance, const FString& pieceOnly = FString(), bool fallback = false);
+
+	/** How tall a worn body stands against a human of the same frame: its scale, or the dwarf's whole height, of which its scale is only a part. */
+	ALVERION_API float heightScale(AActor& body);
+
+	/**
+	 * Whether a body already stands in the shape an appearance wants.
+	 * A dwarf is its human donor's class in another shape, so a body standing as one of them has to be stood again to be the other.
+	 */
+	ALVERION_API bool sameShape(AActor& body, const Network::FAppearance& appearance);
+
 	/** Fetches what every character needs, so the first one shown does not stall the game thread. Harmless to call again. */
 	ALVERION_API void warm();
 

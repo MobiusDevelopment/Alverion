@@ -30,6 +30,30 @@ namespace characterCreate
 	constexpr uint8 femaleSex = 0;
 	constexpr uint8 maleSex = 1;
 
+	// Elves and orcs have eyes of their own to offer past the six colours. Humans do not, and a dwarf has its human donor's.
+	bool offersOwnEyes(uint8 species)
+	{
+		return (species == static_cast<uint8>(Network::EAppearanceSpecies::Elf)) || (species == static_cast<uint8>(Network::EAppearanceSpecies::Orc));
+	}
+
+	// The order the race row walks, which the operator set. It is not the order the wire numbers them in, since orcs were stored before dwarves came.
+	const Network::EAppearanceSpecies speciesOrder[] = { Network::EAppearanceSpecies::Human, Network::EAppearanceSpecies::Elf, Network::EAppearanceSpecies::Dwarf, Network::EAppearanceSpecies::Orc };
+	static_assert(UE_ARRAY_COUNT(speciesOrder) == static_cast<uint8>(Network::EAppearanceSpecies::Count), "Every race has a place in the row.");
+
+	/** The race a step away from this one along the row, wrapping at either end. */
+	uint8 stepSpecies(uint8 species, int32 step)
+	{
+		const int32 count = UE_ARRAY_COUNT(speciesOrder);
+		int32 place = 0;
+		while ((place < count) && (static_cast<uint8>(speciesOrder[place]) != species))
+		{
+			place++;
+		}
+
+		// A step is one place either way, so adding the count once keeps the index from going negative.
+		return static_cast<uint8>(speciesOrder[(place + step + count) % count]);
+	}
+
 	const TCHAR* const sexKeys[] =
 	{
 		TEXT("charcreate.sex_female"),
@@ -139,9 +163,12 @@ TSharedRef<SWidget> UCharacterCreateWidget::RebuildWidget()
 		// rest of that corner is where hair, skin and the other choices go once they exist.
 		UVerticalBox* options = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 
-		// The face first, since it is what a player is actually picking here, and the sexes last.
-		// The order is the operator's, given on 2026-08-13.
-		// The sex pair closes the column, being the one choice that repaints every row above it.
+		UButton* previousSpecies = nullptr;
+		UButton* nextSpecies = nullptr;
+		_speciesLabel = addCycler(*options, LocalizedText::get(TEXT("charcreate.row_species")), previousSpecies, nextSpecies);
+		previousSpecies->OnClicked.AddUniqueDynamic(this, &UCharacterCreateWidget::handleSpeciesPrevClicked);
+		nextSpecies->OnClicked.AddUniqueDynamic(this, &UCharacterCreateWidget::handleSpeciesNextClicked);
+
 		UButton* headPrevious = nullptr;
 		UButton* headNext = nullptr;
 		_headLabel = addCycler(*options, LocalizedText::get(TEXT("charcreate.row_face")), headPrevious, headNext);
@@ -519,12 +546,22 @@ void UCharacterCreateWidget::refreshChoices()
 
 		static_assert(UE_ARRAY_COUNT(eyeColourKeys) == AppearanceChoices::eyeColors, "Every eye colour the wire allows needs a word on the button.");
 
-		_eyeColorLabel->SetText(LocalizedText::get(eyeColourKeys[_eyeColor % AppearanceChoices::eyeColors]));
+		const uint8 choice = _eyeColors[_speciesIndex];
+		const TCHAR* key = (characterCreate::offersOwnEyes(_speciesIndex) && (choice == AppearanceChoices::donorEyeColor)) ? TEXT("options.defaults") : eyeColourKeys[choice % AppearanceChoices::eyeColors];
+		_eyeColorLabel->SetText(LocalizedText::get(key));
 	}
 
 	if (_hairStyleLabel != nullptr)
 	{
-		_hairStyleLabel->SetText(characterCreate::typeName(_hairStyle % AppearanceChoices::hairStyles));
+		const uint8 style = chosenHairStyle();
+		if (style == AppearanceChoices::baldHairStyle)
+		{
+			_hairStyleLabel->SetText(LocalizedText::get(TEXT("charcreate.hair_bald")));
+		}
+		else
+		{
+			_hairStyleLabel->SetText(characterCreate::typeName(style));
+		}
 	}
 
 	// Worded rather than lettered, as the eyes are, since a colour has a name and a letter hides it.
@@ -542,7 +579,7 @@ void UCharacterCreateWidget::refreshChoices()
 
 		static_assert(UE_ARRAY_COUNT(hairColourKeys) == AppearanceChoices::hairColors, "Every hair colour the wire allows needs a word on the button.");
 
-		_hairColorLabel->SetText(LocalizedText::get(hairColourKeys[_hairColor % AppearanceChoices::hairColors]));
+		_hairColorLabel->SetText(LocalizedText::get(hairColourKeys[(_hairColors[_speciesIndex]) % AppearanceChoices::hairColors]));
 	}
 
 	// Offered to men alone, so the row leaves rather than greys out.
@@ -583,7 +620,14 @@ void UCharacterCreateWidget::refreshChoices()
 	// Those names are ours to know and a player's to never see, and they change when a face is swapped.
 	if (_eyebrowsLabel != nullptr)
 	{
-		_eyebrowsLabel->SetText(characterCreate::typeName(_eyebrows % AppearanceChoices::eyebrows));
+		_eyebrowsLabel->SetText(characterCreate::typeName(chosenEyebrows() % AppearanceChoices::eyebrows));
+	}
+
+	if (_speciesLabel != nullptr)
+	{
+		static const TCHAR* const keys[] = { TEXT("charcreate.species_human"), TEXT("charcreate.species_elf"), TEXT("charcreate.species_orc"), TEXT("charcreate.species_dwarf") };
+		static_assert(UE_ARRAY_COUNT(keys) == speciesCount);
+		_speciesLabel->SetText(LocalizedText::get(keys[_speciesIndex]));
 	}
 
 	if (_headLabel != nullptr)
@@ -596,8 +640,22 @@ void UCharacterCreateWidget::refreshChoices()
 	// The order still runs lightest to darkest, which the letters say as well as numbers did.
 	if (_skinToneLabel != nullptr)
 	{
-		_skinToneLabel->SetText(characterCreate::typeName(_skinTone % AppearanceChoices::skinTones));
+		_skinToneLabel->SetText(characterCreate::typeName(_skinTones[_speciesIndex]));
 	}
+}
+
+void UCharacterCreateWidget::handleSpeciesPrevClicked()
+{
+	_speciesIndex = characterCreate::stepSpecies(_speciesIndex, -1);
+	refreshChoices();
+	showAvatar();
+}
+
+void UCharacterCreateWidget::handleSpeciesNextClicked()
+{
+	_speciesIndex = characterCreate::stepSpecies(_speciesIndex, 1);
+	refreshChoices();
+	showAvatar();
 }
 
 void UCharacterCreateWidget::handleFemaleClicked()
@@ -618,42 +676,71 @@ void UCharacterCreateWidget::handleMaleClicked()
 // The same reason the two sex buttons have one each.
 void UCharacterCreateWidget::handleEyesPrevClicked()
 {
-	_eyeColor = cycle(_eyeColor, -1, AppearanceChoices::eyeColors);
+	uint8& colour = _eyeColors[_speciesIndex];
+	colour = cycle(colour, -1, characterCreate::offersOwnEyes(_speciesIndex) ? AppearanceChoices::eyeColors + 1 : AppearanceChoices::eyeColors);
 	refreshChoices();
 	showAvatar();
 }
 
 void UCharacterCreateWidget::handleEyesNextClicked()
 {
-	_eyeColor = cycle(_eyeColor, 1, AppearanceChoices::eyeColors);
+	uint8& colour = _eyeColors[_speciesIndex];
+	colour = cycle(colour, 1, characterCreate::offersOwnEyes(_speciesIndex) ? AppearanceChoices::eyeColors + 1 : AppearanceChoices::eyeColors);
 	refreshChoices();
 	showAvatar();
 }
 
 void UCharacterCreateWidget::handleHairPrevClicked()
 {
-	_hairStyle = cycle(_hairStyle, -1, AppearanceChoices::hairStyles);
-	refreshChoices();
-	showAvatar();
+	cycleHair(-1);
 }
 
 void UCharacterCreateWidget::handleHairNextClicked()
 {
-	_hairStyle = cycle(_hairStyle, 1, AppearanceChoices::hairStyles);
+	cycleHair(1);
+}
+
+uint8 UCharacterCreateWidget::chosenHairStyle() const
+{
+	if (_speciesIndex == 0)
+	{
+		return _hairStyle;
+	}
+
+	// Elf face A starts with the low ponytail or casual side part until the player chooses a style.
+	const uint8 firstFaceStyle = _sex == characterCreate::maleSex ? 28 : 12;
+	return _speciesHairStyles[_speciesIndex][_sex].Get(_speciesIndex == static_cast<uint8>(Network::EAppearanceSpecies::Elf) && _head == 0 ? firstFaceStyle : uint8(0));
+}
+
+void UCharacterCreateWidget::cycleHair(int32 step)
+{
+	const uint8 count = AppearanceChoices::hairStyles + 1;
+	const uint8 style = cycle(chosenHairStyle(), step, count);
+	if (_speciesIndex != 0)
+	{
+		_speciesHairStyles[_speciesIndex][_sex] = style;
+	}
+	else
+	{
+		_hairStyle = style;
+	}
+
 	refreshChoices();
 	showAvatar();
 }
 
 void UCharacterCreateWidget::handleHairColorPrevClicked()
 {
-	_hairColor = cycle(_hairColor, -1, AppearanceChoices::hairColors);
+	uint8& colour = _hairColors[_speciesIndex];
+	colour = cycle(colour, -1, AppearanceChoices::hairColors);
 	refreshChoices();
 	showAvatar();
 }
 
 void UCharacterCreateWidget::handleHairColorNextClicked()
 {
-	_hairColor = cycle(_hairColor, 1, AppearanceChoices::hairColors);
+	uint8& colour = _hairColors[_speciesIndex];
+	colour = cycle(colour, 1, AppearanceChoices::hairColors);
 	refreshChoices();
 	showAvatar();
 }
@@ -706,12 +793,13 @@ Network::FAppearance UCharacterCreateWidget::chosenAppearance() const
 	// Two call sites building this separately is how they stop being.
 	Network::FAppearance appearance;
 	appearance.male = (_sex == characterCreate::maleSex);
+	appearance.species = static_cast<Network::EAppearanceSpecies>(_speciesIndex);
 	appearance.head = _head;
-	appearance.skinTone = _skinTone;
-	appearance.eyeColor = _eyeColor;
-	appearance.hairStyle = _hairStyle;
-	appearance.hairColor = _hairColor;
-	appearance.eyebrows = _eyebrows;
+	appearance.skinTone = _skinTones[_speciesIndex];
+	appearance.eyeColor = _eyeColors[_speciesIndex];
+	appearance.hairStyle = chosenHairStyle();
+	appearance.hairColor = _hairColors[_speciesIndex];
+	appearance.eyebrows = chosenEyebrows();
 
 	// Zero for a woman whatever the rows were left on, since the rows are not hers to have set.
 	appearance.beard = appearance.male ? _facialHair : 0;
@@ -727,28 +815,54 @@ TArray<uint8> UCharacterCreateWidget::packAppearance() const
 
 void UCharacterCreateWidget::handleEyebrowsPrevClicked()
 {
-	_eyebrows = cycle(_eyebrows, -1, AppearanceChoices::eyebrows);
-	refreshChoices();
-	showAvatar();
+	cycleEyebrows(-1);
 }
 
 void UCharacterCreateWidget::handleEyebrowsNextClicked()
 {
-	_eyebrows = cycle(_eyebrows, 1, AppearanceChoices::eyebrows);
+	cycleEyebrows(1);
+}
+
+uint8 UCharacterCreateWidget::chosenEyebrows() const
+{
+	if (_speciesIndex == 0)
+	{
+		return _eyebrows;
+	}
+
+	// The brow styles follow the four original human faces for each sex.
+	static constexpr uint8 donorBrows[][AppearanceChoices::heads] = { { 16, 1, 16, 1 }, { 6, 8, 9, 13 } };
+	return _speciesEyebrows[_speciesIndex][_sex].Get(donorBrows[_sex][_head]);
+}
+
+void UCharacterCreateWidget::cycleEyebrows(int32 step)
+{
+	const uint8 brows = cycle(chosenEyebrows(), step, AppearanceChoices::eyebrows);
+	if (_speciesIndex != 0)
+	{
+		_speciesEyebrows[_speciesIndex][_sex] = brows;
+	}
+	else
+	{
+		_eyebrows = brows;
+	}
+
 	refreshChoices();
 	showAvatar();
 }
 
 void UCharacterCreateWidget::handleSkinPrevClicked()
 {
-	_skinTone = cycle(_skinTone, -1, AppearanceChoices::skinTones);
+	uint8& tone = _skinTones[_speciesIndex];
+	tone = cycle(tone, -1, AppearanceChoices::skinTones);
 	refreshChoices();
 	showAvatar();
 }
 
 void UCharacterCreateWidget::handleSkinNextClicked()
 {
-	_skinTone = cycle(_skinTone, 1, AppearanceChoices::skinTones);
+	uint8& tone = _skinTones[_speciesIndex];
+	tone = cycle(tone, 1, AppearanceChoices::skinTones);
 	refreshChoices();
 	showAvatar();
 }

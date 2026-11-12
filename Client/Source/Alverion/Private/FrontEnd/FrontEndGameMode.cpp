@@ -2,6 +2,7 @@
 
 #include "Appearance.h"
 #include "Appearance/AppearanceApplier.h"
+#include "Appearance/AppearanceChoices.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "FrontEnd/CharacterCreateWidget.h"
@@ -274,7 +275,7 @@ void AFrontEndGameMode::standAvatar(EAvatarSpot spot, UClass* bodyClass, const N
 
 	// Without the MetaHuman assets, which a fresh clone does not have, a placeholder figure tinted by the skin tone stands in.
 	UClass* wanted = (bodyClass != nullptr) ? bodyClass : AStaticMeshActor::StaticClass();
-	if ((_avatar != nullptr) && ((_avatar->GetClass() != wanted) || (_avatarSpot != spot)))
+	if ((_avatar != nullptr) && ((_avatar->GetClass() != wanted) || (_avatarSpot != spot) || ((bodyClass != nullptr) && !Appearance::sameShape(*_avatar, appearance))))
 	{
 		clearAvatar();
 	}
@@ -301,6 +302,10 @@ void AFrontEndGameMode::standAvatar(EAvatarSpot spot, UClass* bodyClass, const N
 		// A MetaHuman stands on its feet at the marker, which carries the yaw its mesh needs to face the camera.
 		_avatar->SetActorLocationAndRotation(marker->GetActorLocation(), marker->GetActorRotation());
 		Appearance::apply(*_avatar, appearance);
+		if (spot == EAvatarSpot::Create)
+		{
+			Appearance::dressStarter(*_avatar, appearance, FString(), true);
+		}
 		return;
 	}
 
@@ -309,7 +314,25 @@ void AFrontEndGameMode::standAvatar(EAvatarSpot spot, UClass* bodyClass, const N
 	figure->SetActorLocationAndRotation(marker->GetActorLocation() + FVector(0.0, 0.0, placeholderHalfHeightCm), marker->GetActorRotation());
 
 	const float shade = skinToneShades[appearance.skinTone % UE_ARRAY_COUNT(skinToneShades)];
-	SceneSetup::paintPlaceholderBody(*figure->GetStaticMeshComponent(), placeholderSkin * shade);
+	FLinearColor skin = placeholderSkin;
+	if (appearance.species == Network::EAppearanceSpecies::Orc)
+	{
+		// These are neutral-light samples of each orc's base skin for the fallback mesh, which has no donor textures.
+		static const FColor swatches[2][AppearanceChoices::heads] =
+		{
+			{ FColor(177, 173, 135), FColor(171, 165, 118), FColor(193, 186, 149), FColor(77, 76, 46) },
+			{ FColor(176, 171, 128), FColor(152, 146, 100), FColor(180, 174, 131), FColor(65, 66, 43) }
+		};
+		const uint8 head = appearance.head < AppearanceChoices::heads ? appearance.head : 0;
+		skin = FLinearColor(swatches[appearance.male ? 1 : 0][head]);
+	}
+	else if (appearance.species == Network::EAppearanceSpecies::Elf)
+	{
+		const float brightness = AppearanceChoices::elfSkinBrightness;
+		skin *= FLinearColor(brightness, brightness, brightness, 1.0f);
+	}
+
+	SceneSetup::paintPlaceholderBody(*figure->GetStaticMeshComponent(), skin * shade);
 }
 
 void AFrontEndGameMode::clearAvatar()

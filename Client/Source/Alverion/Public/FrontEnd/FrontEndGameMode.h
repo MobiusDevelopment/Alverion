@@ -36,6 +36,7 @@ public:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FCharacterSelectionIdleTest;
+	friend class FOrcPlayerCreationTest;
 #endif
 
 	UPROPERTY()

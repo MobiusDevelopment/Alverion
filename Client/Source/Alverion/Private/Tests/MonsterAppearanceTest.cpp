@@ -25,7 +25,7 @@ bool FMonsterAppearanceTest::RunTest(const FString& parameters)
 		GEngine->DestroyWorldContext(world);
 	};
 
-	UClass* goblin = LoadClass<AActor>(nullptr, TEXT("/Game/Characters/MetaHumans/Unpacked/MH_Goblin/BP_MH_Goblin.BP_MH_Goblin_C"));
+	UClass* goblin = LoadClass<AActor>(nullptr, TEXT("/Game/Characters/MetaHumans/Goblins/Male/Goblin/BP_MH_Goblin.BP_MH_Goblin_C"));
 	if (!TestNotNull(TEXT("The assembled goblin is installed"), goblin))
 	{
 		return false;
