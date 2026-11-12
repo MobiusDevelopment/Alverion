@@ -105,6 +105,9 @@ private:
 	// and pushing that screen again on the way back would stack a second copy of it.
 	bool _characterSelectPushed = false;
 
+	// Constructed on the way back from the world, with the list already held: the list goes up as soon as this screen is active.
+	bool _backFromWorld = false;
+
 	// The character screen, so a list sent again after a creation or deletion refreshes it rather than stacking a second one.
 	TWeakObjectPtr<UCharacterSelectWidget> _characterSelect;
 

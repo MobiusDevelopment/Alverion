@@ -233,6 +233,11 @@ bool FLiveServerRoundTripTest::RunTest(const FString& parameters)
 	TestTrue(TEXT("A townsperson answers the click with a dialog"), answered);
 	worldFlow.onNpcHtml.Unbind();
 
+	// Back to the character list over the same link, as the game menu's Characters button asks.
+	TestTrue(TEXT("The restart request goes out"), gameFlow.returnToCharacterSelect());
+	const bool listedAgain = pump([&]() { return (gameFlow.step() == Network::EGameServerStep::CharacterSelect) || (gameFlow.step() == Network::EGameServerStep::Failed); }, 10.0);
+	TestTrue(FString::Printf(TEXT("The server lists the characters again without a second login (%s)"), *gameFlow.lastError()), listedAgain && (gameFlow.step() == Network::EGameServerStep::CharacterSelect));
+
 	worldFlow.end();
 	gameFlow.end();
 	gameSession.disconnect();

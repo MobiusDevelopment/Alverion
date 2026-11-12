@@ -322,11 +322,11 @@ void ULoginWidget::NativeConstruct()
 	LocalizedText::applyToTree(WidgetTree, loginTextKeys);
 
 	// Back from the world with the character list already held: straight to it, without the login form or a second automatic login.
+	// Pushed once this screen is active rather than now, since it is still being added to the same stack and would land over the list.
 	UServerConnectionSubsystem* network = connectionOf(*this);
 	if ((network != nullptr) && (network->gameServer().step() == Network::EGameServerStep::CharacterSelect))
 	{
-		bindGameServer();
-		showCharacterSelect();
+		_backFromWorld = true;
 		return;
 	}
 
@@ -354,6 +354,14 @@ void ULoginWidget::NativeDestruct()
 void ULoginWidget::NativeOnActivated()
 {
 	Super::NativeOnActivated();
+
+	if (_backFromWorld)
+	{
+		_backFromWorld = false;
+		bindGameServer();
+		showCharacterSelect();
+		return;
+	}
 
 	// NativeGetDesiredFocusTarget names this field, but that leaves the caret outside it. Asked for again here, where the widget is on screen.
 	if (accountTextBox != nullptr)
