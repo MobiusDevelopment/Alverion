@@ -156,7 +156,9 @@ void UItemSlotWidget::refreshLook()
 	}
 
 	_icon->SetVisibility((icon != nullptr) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	_frame->SetBrush(UIStyle::stateBrush(fill, UIStyle::outline, itemSlotRadius));
+
+	// A picture shows as it was drawn, on the empty slot, without the kind's colour behind it.
+	_frame->SetBrush(UIStyle::stateBrush((icon != nullptr) ? itemSlotEmptyFill : fill, UIStyle::outline, itemSlotRadius));
 	_name->SetText((icon != nullptr) ? FText::GetEmpty() : name);
 	_count->SetText(count);
 

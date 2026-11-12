@@ -45,11 +45,14 @@ bool FItemCatalogTest::RunTest(const FString& parameters)
 		UTexture2D* icon = LoadObject<UTexture2D>(nullptr, *shirt->icon);
 		if (TestNotNull(TEXT("The starter shirt icon texture loads"), icon))
 		{
-#if WITH_EDITOR
-			icon->BlockOnAnyAsyncBuild();
-#endif
+#if WITH_EDITORONLY_DATA
+			// The imported picture's own size: a run without a GPU never builds the texture, so its built size reads zero.
+			TestEqual(TEXT("The shirt icon is 512 pixels wide"), static_cast<int32>(icon->Source.GetSizeX()), 512);
+			TestEqual(TEXT("The shirt icon is 512 pixels high"), static_cast<int32>(icon->Source.GetSizeY()), 512);
+#else
 			TestEqual(TEXT("The shirt icon is 512 pixels wide"), icon->GetSizeX(), 512);
 			TestEqual(TEXT("The shirt icon is 512 pixels high"), icon->GetSizeY(), 512);
+#endif
 		}
 	}
 	TestFalse(TEXT("ST_Items names it"), ItemCatalog::name(30001).ToString().Contains(TEXT("30001")));
