@@ -129,7 +129,9 @@ namespace
 				}
 
 				const TArray<uint8> bytes = look.pack();
-				ui->showAvatar(creation ? EAvatarSpot::Create : EAvatarSpot::Select, bytes);
+				// Selection shows the server's starting equipment, the villager clothes and the wooden sword, and creation none of it.
+				const TArray<int32> starter = { 30001, 30002, 30003, 30004, 30005, 30006 };
+				ui->showAvatar(creation ? EAvatarSpot::Create : EAvatarSpot::Select, bytes, creation ? TConstArrayView<int32>() : TConstArrayView<int32>(starter));
 				const FName tag = creation ? FName(TEXT("FrontEndStop.Create")) : FName(TEXT("FrontEndStop.Select"));
 				for (TActorIterator<ACameraActor> iterator(world); iterator; ++iterator)
 				{

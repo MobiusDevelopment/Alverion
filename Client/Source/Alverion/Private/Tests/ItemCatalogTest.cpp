@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Items/ItemCatalog.h"
+#include "Engine/Texture2D.h"
 #include "Misc/AutomationTest.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FItemCatalogTest, "Alverion.UI.ItemCatalog", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -38,6 +39,19 @@ bool FItemCatalogTest::RunTest(const FString& parameters)
 	// The shipped files: the shirt the server's starting equipment hands out.
 	const FItemData* shirt = ItemCatalog::find(30001);
 	TestTrue(TEXT("Items.csv carries the starter shirt"), (shirt != nullptr) && (shirt->slot == TEXT("chest")));
+	if (shirt != nullptr)
+	{
+		TestEqual(TEXT("The starter shirt has its inventory icon"), shirt->icon, FString(TEXT("/Game/Equipment/Icons/T_Icon_Villager_Shirt")));
+		UTexture2D* icon = LoadObject<UTexture2D>(nullptr, *shirt->icon);
+		if (TestNotNull(TEXT("The starter shirt icon texture loads"), icon))
+		{
+#if WITH_EDITOR
+			icon->BlockOnAnyAsyncBuild();
+#endif
+			TestEqual(TEXT("The shirt icon is 512 pixels wide"), icon->GetSizeX(), 512);
+			TestEqual(TEXT("The shirt icon is 512 pixels high"), icon->GetSizeY(), 512);
+		}
+	}
 	TestFalse(TEXT("ST_Items names it"), ItemCatalog::name(30001).ToString().Contains(TEXT("30001")));
 	TestFalse(TEXT("And describes it"), ItemCatalog::description(30001).IsEmpty());
 	return true;

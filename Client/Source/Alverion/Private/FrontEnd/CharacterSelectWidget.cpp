@@ -289,7 +289,7 @@ void UCharacterSelectWidget::refresh()
 			// The game mode is what applies them, so this screen never learns what a byte means.
 			if (ui->showAvatar)
 			{
-				ui->showAvatar(EAvatarSpot::Select, shown->appearance);
+				ui->showAvatar(EAvatarSpot::Select, shown->appearance, shown->worn);
 			}
 		}
 		else if (ui->clearAvatar)

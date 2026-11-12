@@ -207,11 +207,11 @@ void AFrontEndGameMode::installAvatarHooks()
 	// Weak, because the subsystem outlives this level and a hook left behind must do nothing.
 	TWeakObjectPtr<AFrontEndGameMode> weakThis(this);
 
-	subsystem->showAvatar = [weakThis](EAvatarSpot spot, TConstArrayView<uint8> appearance)
+	subsystem->showAvatar = [weakThis](EAvatarSpot spot, TConstArrayView<uint8> appearance, TConstArrayView<int32> worn)
 	{
 		if (AFrontEndGameMode* gameMode = weakThis.Get())
 		{
-			gameMode->showAvatar(spot, appearance);
+			gameMode->showAvatar(spot, appearance, worn);
 		}
 	};
 
@@ -240,7 +240,7 @@ void AFrontEndGameMode::installAvatarHooks()
 	};
 }
 
-void AFrontEndGameMode::showAvatar(EAvatarSpot spot, TConstArrayView<uint8> appearance)
+void AFrontEndGameMode::showAvatar(EAvatarSpot spot, TConstArrayView<uint8> appearance, TConstArrayView<int32> worn)
 {
 	AActor* marker = _avatarSpots.FindRef(spot);
 	if (marker == nullptr)
@@ -254,19 +254,21 @@ void AFrontEndGameMode::showAvatar(EAvatarSpot spot, TConstArrayView<uint8> appe
 
 	// The body may have to be fetched first, and only the newest request is worth standing up when it lands.
 	const uint32 request = ++_avatarRequest;
+	const uint8 wornPieces = Appearance::wornPieces(worn);
 	const TWeakObjectPtr<AFrontEndGameMode> weakThis(this);
-	Appearance::requestBodyClass(unpacked, [weakThis, request, spot, unpacked](UClass* bodyClass)
+	Appearance::requestBodyClass(unpacked, [weakThis, request, spot, unpacked, wornPieces](UClass* bodyClass)
 	{
 		AFrontEndGameMode* gameMode = weakThis.Get();
 		if ((gameMode != nullptr) && (request == gameMode->_avatarRequest))
 		{
-			gameMode->standAvatar(spot, bodyClass, unpacked);
+			gameMode->standAvatar(spot, bodyClass, unpacked, wornPieces);
 		}
 	});
 }
 
-void AFrontEndGameMode::standAvatar(EAvatarSpot spot, UClass* bodyClass, const Network::FAppearance& appearance)
+void AFrontEndGameMode::standAvatar(EAvatarSpot spot, UClass* bodyClass, const Network::FAppearance& appearance, uint8 worn)
 {
+	static_assert(Appearance::wornEverything == 0x3F, "standAvatar's default in the header names the whole outfit by value.");
 	AActor* marker = _avatarSpots.FindRef(spot);
 	if (marker == nullptr)
 	{
@@ -301,11 +303,8 @@ void AFrontEndGameMode::standAvatar(EAvatarSpot spot, UClass* bodyClass, const N
 	{
 		// A MetaHuman stands on its feet at the marker, which carries the yaw its mesh needs to face the camera.
 		_avatar->SetActorLocationAndRotation(marker->GetActorLocation(), marker->GetActorRotation());
-		Appearance::apply(*_avatar, appearance);
-		if (spot == EAvatarSpot::Create)
-		{
-			Appearance::dressStarter(*_avatar, appearance, FString(), true);
-		}
+		// Creation wears nothing yet, so the body stands in its underwear there.
+		Appearance::apply(*_avatar, appearance, (spot == EAvatarSpot::Create) ? 0 : worn);
 		return;
 	}
 

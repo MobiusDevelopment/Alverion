@@ -66,8 +66,9 @@ private:
 
 	void collectAvatarSpots();
 	void installAvatarHooks();
-	void showAvatar(EAvatarSpot spot, TConstArrayView<uint8> appearance);
-	void standAvatar(EAvatarSpot spot, UClass* bodyClass, const Network::FAppearance& appearance);
+	void showAvatar(EAvatarSpot spot, TConstArrayView<uint8> appearance, TConstArrayView<int32> worn);
+	/** Worn is the garments shown, the whole starter outfit unless said otherwise. The creation spot always stands in underwear. */
+	void standAvatar(EAvatarSpot spot, UClass* bodyClass, const Network::FAppearance& appearance, uint8 worn = 0x3F);
 	void clearAvatar();
 
 	// Counts avatar requests, so a body that arrives after the player has moved on is dropped rather than shown.

@@ -955,7 +955,7 @@ void UCharacterCreateWidget::showAvatar()
 		{
 			// Packed here rather than sent field by field.
 			// The preview and the created character are then built from the very same bytes.
-			ui.showAvatar(EAvatarSpot::Create, packAppearance());
+			ui.showAvatar(EAvatarSpot::Create, packAppearance(), TConstArrayView<int32>());
 		}
 	});
 }

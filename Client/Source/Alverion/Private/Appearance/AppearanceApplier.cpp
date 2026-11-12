@@ -20,6 +20,7 @@
 #include "GroomAsset.h"
 #include "GroomBindingAsset.h"
 #include "GroomComponent.h"
+#include "Items/ItemCatalog.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/CommandLine.h"
 #include "Misc/MemStack.h"
@@ -1102,7 +1103,27 @@ namespace Appearance
 		}
 	}
 
-	bool dressStarter(AActor& avatar, const Network::FAppearance& appearance, const FString& pieceOnly, bool fallback)
+	uint8 wornPieces(TConstArrayView<int32> itemIds)
+	{
+		// In the order of the worn bits: the starter outfit's five garments, then the sword.
+		const TCHAR* const visuals[] = { TEXT("Villager.Hat"), TEXT("Villager.Shirt"), TEXT("Villager.Pants"), TEXT("Villager.Gloves"), TEXT("Villager.Boots"), TEXT("Weapon.StarterWoodenSword") };
+		uint8 worn = 0;
+		for (const int32 itemId : itemIds)
+		{
+			const FItemData* item = ItemCatalog::find(itemId);
+			for (int32 index = 0; (item != nullptr) && (index < UE_ARRAY_COUNT(visuals)); index++)
+			{
+				if (item->visual == visuals[index])
+				{
+					worn |= 1 << index;
+				}
+			}
+		}
+
+		return worn;
+	}
+
+	bool dressStarter(AActor& avatar, const Network::FAppearance& appearance, const FString& pieceOnly, bool fallback, uint8 worn)
 	{
 		USkeletalMeshComponent* body = findMesh(avatar, TEXT("Body"));
 		if (body == nullptr)
@@ -1264,7 +1285,10 @@ namespace Appearance
 				continue;
 			}
 
-			const bool visible = pieceFiltered || (index < 5 ? !fallback : index == 5 ? fallback || pieces[1] == nullptr : fallback || pieces[2] == nullptr);
+			// The underwear shows wherever the shirt or the pants is not worn, so taking one off never leaves the body bare.
+			const bool shirtShown = !fallback && (pieces[1] != nullptr) && ((worn & wornShirt) != 0);
+			const bool pantsShown = !fallback && (pieces[2] != nullptr) && ((worn & wornPants) != 0);
+			const bool visible = pieceFiltered || (index < 5 ? !fallback && ((worn & (1 << index)) != 0) : index == 5 ? !shirtShown : !pantsShown);
 			if (garment->GetSkeletalMeshAsset() != pieces[index])
 			{
 				garment->SetSkeletalMeshAsset(pieces[index]);
@@ -1374,7 +1398,7 @@ namespace Appearance
 			weapon->SetRelativeTransform(carry.GetRelativeTransform(carryReference));
 			weapon->SetWorldScale3D(FVector(heightScale(avatar)));
 			weapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			weapon->SetVisibility(!pieceFiltered && !fallback);
+			weapon->SetVisibility(!pieceFiltered && !fallback && ((worn & wornSword) != 0));
 			if (!weapon->IsRegistered())
 			{
 				weapon->RegisterComponent();
@@ -1439,7 +1463,7 @@ namespace Appearance
 		return complete;
 	}
 
-	void apply(AActor& avatar, const Network::FAppearance& appearance)
+	void apply(AActor& avatar, const Network::FAppearance& appearance, uint8 worn)
 	{
 		USkeletalMeshComponent* face = findMesh(avatar, TEXT("Face"));
 		const FString characterName = characterNameFor(appearance);
@@ -1503,7 +1527,7 @@ namespace Appearance
 			fallback = FParse::Param(FCommandLine::Get(), TEXT("WardrobeFallback"));
 		}
 #endif
-		if (!dressStarter(avatar, appearance, pieceOnly, fallback))
+		if (!dressStarter(avatar, appearance, pieceOnly, fallback, worn))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("The starter outfit could not be fully applied to %s."), *avatar.GetName());
 		}
@@ -1544,7 +1568,7 @@ namespace Appearance
 		return wearsDwarf(body) == (appearance.species == Network::EAppearanceSpecies::Dwarf);
 	}
 
-	void attachTo(AActor& host, const Network::FAppearance& appearance, const FVector& feetOffset, TFunction<void(AActor*)> whenAttached, const FString& authoredBody)
+	void attachTo(AActor& host, const Network::FAppearance& appearance, const FVector& feetOffset, TFunction<void(AActor*)> whenAttached, const FString& authoredBody, uint8 worn)
 	{
 		// A MetaHuman's mesh sits a quarter turn off its actor's yaw, the same offset the front end's spots carry.
 		static constexpr float bodyYawOffset = -90.0f;
@@ -1559,7 +1583,7 @@ namespace Appearance
 
 		const FString characterName = useAuthoredBody ? authoredBody : characterNameFor(appearance);
 		const bool dwarf = !useAuthoredBody && (appearance.species == Network::EAppearanceSpecies::Dwarf);
-		requestNamedBodyClass(characterName, dwarf, [weakHost, appearance, feetOffset, whenAttached, useAuthoredBody](UClass* bodyClass)
+		requestNamedBodyClass(characterName, dwarf, [weakHost, appearance, feetOffset, whenAttached, useAuthoredBody, worn](UClass* bodyClass)
 		{
 			AActor* hostActor = weakHost.Get();
 			if (hostActor == nullptr)
@@ -1575,7 +1599,7 @@ namespace Appearance
 			}
 
 			const TWeakObjectPtr<UClass> weakClass(bodyClass);
-			queueBody(*world, [weakHost, weakClass, appearance, feetOffset, whenAttached, useAuthoredBody]()
+			queueBody(*world, [weakHost, weakClass, appearance, feetOffset, whenAttached, useAuthoredBody, worn]()
 			{
 				// The host can leave, and the class be collected, while the body waits for its frame.
 				AActor* queuedHost = weakHost.Get();
@@ -1608,7 +1632,7 @@ namespace Appearance
 				body->SetActorRelativeRotation(FRotator(0.0f, bodyYawOffset, 0.0f));
 				if (!useAuthoredBody)
 				{
-					apply(*body, appearance);
+					apply(*body, appearance, worn);
 				}
 
 				whenAttached(body);

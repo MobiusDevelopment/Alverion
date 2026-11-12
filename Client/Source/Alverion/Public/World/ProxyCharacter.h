@@ -53,6 +53,9 @@ private:
 	/** The bytes the MetaHuman was dressed from, so a repeated spawn does not stand up a second body. */
 	TArray<uint8> _wornAppearance;
 	bool _wearsGoblin = false;
+
+	/** The garments the body shows, from the items the server last showed on this player. */
+	uint8 _worn = 0;
 	bool _townsperson = false;
 	FQuat _bodyRestRotation = FQuat::Identity;
 	FVector _groundNormal = FVector::UpVector;

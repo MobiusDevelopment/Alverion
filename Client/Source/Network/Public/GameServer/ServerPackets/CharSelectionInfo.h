@@ -50,8 +50,13 @@ inline bool readCharacterSelectionInfo(TArrayView<const uint8> body, TArray<FCha
 
 		buffer.readInt32(entry.level);
 
-		// Karma, PK and PvP kills, seven zeros, then the paperdoll.
-		buffer.skip((10 + paperdollSlots) * 4);
+		// Karma, PK and PvP kills and seven zeros, then the item worn in each paperdoll slot.
+		buffer.skip(10 * 4);
+		entry.worn.SetNumZeroed(paperdollSlots);
+		for (int32& itemId : entry.worn)
+		{
+			buffer.readInt32(itemId);
+		}
 
 		buffer.readInt32(entry.hairStyle);
 		buffer.readInt32(entry.hairColor);

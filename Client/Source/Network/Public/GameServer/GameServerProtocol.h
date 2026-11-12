@@ -125,6 +125,9 @@ struct NETWORK_API FCharacterListEntry
 
 	/** The extension's bytes, empty for a character made without them. */
 	TArray<uint8> appearance;
+
+	/** The item id worn in each paperdoll slot, zero where nothing is. */
+	TArray<int32> worn;
 };
 
 struct NETWORK_API FCharacterSelected
@@ -267,6 +270,9 @@ struct NETWORK_API FCharacterSpawn
 	int32 hairColor = 0;
 	int32 face = 0;
 	TArray<uint8> appearance;
+
+	/** For a player, the item id shown in each paperdoll slot CharInfo lists, zero where nothing is. Empty for anything else. */
+	TArray<int32> worn;
 };
 
 /** One dialog page as NpcHtmlMessage carries it: the text is HTML of the kind the server's data files hold. */
@@ -292,8 +298,11 @@ namespace GameServer
 /** The newest protocol revision the server accepts. */
 inline constexpr int32 protocolRevision = 273;
 
-/** The paperdoll slots CharSelectionInfo and CharInfo list, one int each. */
+/** The paperdoll slots CharSelectionInfo lists, one int each. */
 inline constexpr int32 paperdollSlots = 26;
+
+/** The paperdoll slots CharInfo lists, fewer than the character list's: what another player can see on someone, without the ears, neck and fingers. */
+inline constexpr int32 charInfoPaperdollSlots = 21;
 
 /** Marks the appearance extension, as the bytes 'A' 'L' 'V' '1'. A server without the patch never sends it and ignores it when sent. */
 inline constexpr int32 appearanceMagic = 0x31564C41;

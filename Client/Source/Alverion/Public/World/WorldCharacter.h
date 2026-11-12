@@ -81,6 +81,16 @@ private:
 	UPROPERTY()
 	TObjectPtr<AActor> _metaHuman;
 
+	/** What the MetaHuman was stood from, kept so a change of equipment can dress it again. */
+	Network::FAppearance _appearance;
+
+	/** The inventory revision and the garments the body was last dressed for: the full outfit it stands in, until the inventory says otherwise. */
+	uint32 _dressedRevision = 0;
+	uint8 _dressedWorn = 0;
+
+	/** Dresses the body in what the inventory has equipped, with the underwear for whatever is not, each time that changes. */
+	void dressFromInventory();
+
 	/** The continent streams around the player, and loads nothing without a source. */
 	UPROPERTY()
 	TObjectPtr<UWorldPartitionStreamingSourceComponent> _streaming;

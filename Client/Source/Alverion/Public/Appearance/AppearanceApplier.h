@@ -71,11 +71,26 @@ namespace Appearance
 	 */
 	ALVERION_API void animate(AActor& body, EMotion motion, float speedCm);
 
-	/** Applies what it can and leaves the rest: a missing groom or eye material is logged and skipped, since a bald character beats no character. */
-	ALVERION_API void apply(AActor& avatar, const Network::FAppearance& appearance);
+	/** What a body wears, one bit each: the starter outfit's garments in the order it lists them, then the sword. */
+	inline constexpr uint8 wornHat = 1 << 0;
+	inline constexpr uint8 wornShirt = 1 << 1;
+	inline constexpr uint8 wornPants = 1 << 2;
+	inline constexpr uint8 wornGloves = 1 << 3;
+	inline constexpr uint8 wornBoots = 1 << 4;
+	inline constexpr uint8 wornSword = 1 << 5;
+	inline constexpr uint8 wornEverything = 0x3F;
 
-	/** Dresses the actual body in equipment-owned starter garments, retaining separate cloth simulation and reusing its components. Diagnostic selections hide the other pieces. */
-	ALVERION_API bool dressStarter(AActor& avatar, const Network::FAppearance& appearance, const FString& pieceOnly = FString(), bool fallback = false);
+	/** What equipped items show as on the body, by each item's visual in the item data. An item that shows nowhere, or that the data does not list, adds nothing. */
+	ALVERION_API uint8 wornPieces(TConstArrayView<int32> itemIds);
+
+	/** Applies what it can and leaves the rest: a missing groom or eye material is logged and skipped, since a bald character beats no character. */
+	ALVERION_API void apply(AActor& avatar, const Network::FAppearance& appearance, uint8 worn = wornEverything);
+
+	/**
+	 * Dresses the actual body in equipment-owned starter garments, retaining separate cloth simulation and reusing its components. Diagnostic selections hide the other pieces.
+	 * Only what worn names shows. The underwear stands in for a shirt or pants that is not worn, and fallback shows the underwear alone.
+	 */
+	ALVERION_API bool dressStarter(AActor& avatar, const Network::FAppearance& appearance, const FString& pieceOnly = FString(), bool fallback = false, uint8 worn = wornEverything);
 
 	/** How tall a worn body stands against a human of the same frame: its scale, or the dwarf's whole height, of which its scale is only a part. */
 	ALVERION_API float heightScale(AActor& body);
@@ -103,5 +118,5 @@ namespace Appearance
 	 * An authored body uses its assembled Blueprint and keeps its own materials and grooms.
 	 * The host owns it from then on and destroys it with itself, since an attached actor outlives its parent otherwise.
 	 */
-	ALVERION_API void attachTo(AActor& host, const Network::FAppearance& appearance, const FVector& feetOffset, TFunction<void(AActor*)> whenAttached, const FString& authoredBody = FString());
+	ALVERION_API void attachTo(AActor& host, const Network::FAppearance& appearance, const FVector& feetOffset, TFunction<void(AActor*)> whenAttached, const FString& authoredBody = FString(), uint8 worn = wornEverything);
 }

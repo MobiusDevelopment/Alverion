@@ -68,7 +68,8 @@ public:
 	// Installed by the front end game mode, the only thing that can see the level, and unset on any level without one, so every caller checks first.
 	// The appearance travels as its packed bytes, so a screen never learns what a byte means. Empty bytes are legal and mean the defaults.
 	// The game mode captures itself weakly, so one left behind by a dead game mode does nothing.
-	TFunction<void(EAvatarSpot spot, TConstArrayView<uint8> appearance)> showAvatar;
+	// The items worn travel the same way, as the server's item ids; none at all stands the body in its underwear.
+	TFunction<void(EAvatarSpot spot, TConstArrayView<uint8> appearance, TConstArrayView<int32> worn)> showAvatar;
 	TFunction<void()> clearAvatar;
 
 	// Turns whoever is standing, in degrees, so a face can be seen from more than one side.

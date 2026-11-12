@@ -61,13 +61,27 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 	Network::FAppearance appearance;
 	appearance.male = !spawn.attackable;
 	const TArray<uint8> look = spawn.isNpc ? appearance.pack() : spawn.appearance;
-	if (((look == _wornAppearance) && (goblin == _wearsGoblin)) || !Network::FAppearance::unpack(look, appearance))
+	const uint8 worn = spawn.isNpc ? Appearance::wornEverything : Appearance::wornPieces(spawn.worn);
+	if (!Network::FAppearance::unpack(look, appearance))
 	{
+		return;
+	}
+
+	// The server sends a player again when their equipment changes, which dresses the same body again rather than standing up another.
+	if ((look == _wornAppearance) && (goblin == _wearsGoblin))
+	{
+		if ((worn != _worn) && (_metaHuman != nullptr) && !goblin)
+		{
+			Appearance::dressStarter(*_metaHuman, appearance, FString(), false, worn);
+		}
+
+		_worn = worn;
 		return;
 	}
 
 	_wornAppearance = look;
 	_wearsGoblin = goblin;
+	_worn = worn;
 	if (_metaHuman != nullptr)
 	{
 		_metaHuman->Destroy();
@@ -78,7 +92,7 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 	// The placeholder hides while the MetaHuman loads and comes back only when the MetaHuman assets are missing, so it never shows first and changes into the body.
 	_body->SetVisibility(false);
 	const TWeakObjectPtr<AProxyCharacter> weakThis(this);
-	Appearance::attachTo(*this, appearance, FVector::ZeroVector, [weakThis, look, goblin](AActor* body)
+	Appearance::attachTo(*this, appearance, FVector::ZeroVector, [weakThis, look, goblin, appearance, worn](AActor* body)
 	{
 		AProxyCharacter* proxy = weakThis.Get();
 		if (body == nullptr)
@@ -101,7 +115,13 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 		proxy->_metaHuman = body;
 		proxy->_bodyRestRotation = body->GetRootComponent()->GetRelativeRotation().Quaternion();
 		proxy->_body->SetVisibility(false);
-	}, goblin ? TEXT("MH_Goblin") : TEXT(""));
+
+		// Equipment that changed while the body loaded.
+		if ((proxy->_worn != worn) && !goblin)
+		{
+			Appearance::dressStarter(*body, appearance, FString(), false, proxy->_worn);
+		}
+	}, goblin ? TEXT("MH_Goblin") : TEXT(""), worn);
 }
 
 bool AProxyCharacter::isTownsperson() const

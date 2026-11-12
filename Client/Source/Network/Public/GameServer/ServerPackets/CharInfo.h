@@ -35,8 +35,16 @@ inline bool readCharInfo(TArrayView<const uint8> body, FCharacterSpawn& spawn)
 	buffer.readInt32(spawn.race);
 	buffer.readInt32(female);
 
-	// Base class, paperdoll items and their augmentations, then talismans, cloak, PvP flag, karma, both attack speeds and an unknown.
-	buffer.skip((1 + (paperdollSlots * 2) + 7) * 4);
+	// Base class, then the paperdoll items.
+	buffer.skip(4);
+	spawn.worn.SetNumZeroed(charInfoPaperdollSlots);
+	for (int32& itemId : spawn.worn)
+	{
+		buffer.readInt32(itemId);
+	}
+
+	// Their augmentations, then talismans, cloak, PvP flag, karma, both attack speeds and an unknown.
+	buffer.skip((charInfoPaperdollSlots + 7) * 4);
 
 	buffer.readInt32(runSpeed);
 	buffer.readInt32(walkSpeed);

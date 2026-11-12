@@ -36,7 +36,7 @@ MetaHumans are covered by the Unreal Engine EULA: share the download only with p
 
 Download the equipment assets here:
 
-https://drive.google.com/file/d/1AeVzf-gDI1gz8xxiXMgTn3Wi4Wn8Rd0j/view?usp=sharing
+https://drive.google.com/file/d/1hhmGeOcVZUqQ2xE4g6my3X9aukO6NApo/view?usp=sharing
 
 Extract the zip so that its folders land in `Client/Content/Equipment/`.
 

@@ -58,7 +58,15 @@ namespace
 		body.writeString(TEXT("Walker"));
 		body.writeInt32(0);
 		body.writeInt32(0);
-		body.writeZeros((1 + (Network::GameServer::paperdollSlots * 2) + 7) * 4);
+		body.writeInt32(0);
+
+		// The paperdoll CharInfo shows others: the wooden sword in the right hand, the third slot, and nothing else.
+		for (int32 slot = 0; slot < Network::GameServer::charInfoPaperdollSlots; slot++)
+		{
+			body.writeInt32((slot == 2) ? 30006 : 0);
+		}
+
+		body.writeZeros((Network::GameServer::charInfoPaperdollSlots + 7) * 4);
 		body.writeInt32(120);
 		body.writeInt32(50);
 		body.writeInt32(80);
@@ -110,6 +118,8 @@ bool FMoveTypeCharInfoTest::RunTest(const FString& parameters)
 	TestEqual(TEXT("Run speed in centimetres"), walker.runSpeed, 480.0f);
 	TestEqual(TEXT("Walk speed in centimetres"), walker.walkSpeed, 200.0f);
 	TestEqual(TEXT("The name is read"), walker.name, FString(TEXT("Walker")));
+	TestEqual(TEXT("Every slot CharInfo shows is read"), walker.worn.Num(), Network::GameServer::charInfoPaperdollSlots);
+	TestEqual(TEXT("With the sword in the right hand"), walker.worn.IsValidIndex(2) ? walker.worn[2] : 0, 30006);
 
 	Network::FWriteBuffer running = moveTypeTestCharInfo(true);
 	Network::FCharacterSpawn runner;
