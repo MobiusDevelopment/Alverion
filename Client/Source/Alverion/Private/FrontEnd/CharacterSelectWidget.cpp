@@ -134,12 +134,13 @@ TSharedRef<SWidget> UCharacterSelectWidget::RebuildWidget()
 		nextBox->AddChild(_nextButton);
 		nameRow->AddChildToHorizontalBox(nextBox)->SetVerticalAlignment(VAlign_Center);
 
-		_nameColumn->AddChildToVerticalBox(nameRow)->SetHorizontalAlignment(HAlign_Center);
-
+		// Above the name, so the column, which hangs from the bottom of the screen, grows upwards and the name stays put.
 		_deletionLabel = UIStyle::makeLabel(*WidgetTree, FText::GetEmpty(), UIStyle::bodyFontSize, UIStyle::mutedColor);
 		_deletionLabel->SetJustification(ETextJustify::Center);
 		_deletionLabel->SetVisibility(ESlateVisibility::Collapsed);
 		_nameColumn->AddChildToVerticalBox(_deletionLabel)->SetHorizontalAlignment(HAlign_Center);
+
+		_nameColumn->AddChildToVerticalBox(nameRow)->SetHorizontalAlignment(HAlign_Center);
 
 		_enterButton = UIStyle::frontEndButton(*WidgetTree, LocalizedText::get(TEXT("menu.enter")));
 		_enterButton->OnClicked.AddUniqueDynamic(this, &UCharacterSelectWidget::handleEnterClicked);
