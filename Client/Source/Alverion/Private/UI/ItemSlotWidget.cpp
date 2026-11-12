@@ -3,11 +3,13 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
+#include "Engine/Texture2D.h"
 #include "GameServer/WorldFlow.h"
 #include "Items/ItemCatalog.h"
 #include "ServerConnectionSubsystem.h"
@@ -82,6 +84,12 @@ TSharedRef<SWidget> UItemSlotWidget::RebuildWidget()
 		UOverlay* layers = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		_frame->SetContent(layers);
 
+		// The item's picture fills the tile beneath the text.
+		_icon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		UOverlaySlot* iconSlot = layers->AddChildToOverlay(_icon);
+		iconSlot->SetHorizontalAlignment(HAlign_Fill);
+		iconSlot->SetVerticalAlignment(VAlign_Fill);
+
 		_name = UIStyle::makeLabel(*WidgetTree, FText::GetEmpty(), itemSlotNameFontSize, UIStyle::labelColor);
 		_name->SetAutoWrapText(true);
 		_name->SetJustification(ETextJustify::Center);
@@ -139,8 +147,17 @@ void UItemSlotWidget::refreshLook()
 		name = FText::AsCultureInvariant((type >= 0) && (type < static_cast<int32>(UE_ARRAY_COUNT(itemSlotShortcutLetters))) ? itemSlotShortcutLetters[type] : TEXT(""));
 	}
 
+	// An item with a picture shows it in place of its name, which the tooltip still gives.
+	const FItemData* data = _hasItem ? ItemCatalog::find(_item.itemId) : nullptr;
+	UTexture2D* icon = ((data != nullptr) && !data->icon.IsEmpty()) ? LoadObject<UTexture2D>(nullptr, *data->icon) : nullptr;
+	if (icon != nullptr)
+	{
+		_icon->SetBrushFromTexture(icon);
+	}
+
+	_icon->SetVisibility((icon != nullptr) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	_frame->SetBrush(UIStyle::stateBrush(fill, UIStyle::outline, itemSlotRadius));
-	_name->SetText(name);
+	_name->SetText((icon != nullptr) ? FText::GetEmpty() : name);
 	_count->SetText(count);
 
 	// The tooltip: the name with the count, then where it is worn and what it is, each line only when there is something to say.

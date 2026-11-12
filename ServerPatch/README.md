@@ -19,12 +19,16 @@ sees. It also adds Alverion's own items and starts new characters in them.
   wyvern at 50000 and under the 65535 the item schema allows. They sit with the stock items, so
   they load with `CustomItemsLoad` off. Today they are five villager clothes, shirt, pants, gloves,
   boots and hat, and a wooden sword. The client names, describes and dresses them by id.
-- `initialEquipment.xml` starts a new human fighter, the class the client creates, in the clothes
-  and with the sword instead of the squire's shirt, pants and sword.
+- `initialEquipment.xml` starts a new human fighter, the class the client creates, with Alverion's
+  six items worn and none of the stock ones. It does so with a second human fighter block at the
+  end of the file, which replaces the stock one as the later of the two, since the two releases'
+  stock blocks differ and no edit of them fits both.
+- `initialShortcuts.xml` drops the global shortcuts, the only ones a human fighter gets, so the
+  action bar starts empty.
 
 Four upstream Java files change by 26 added lines in total, `Player.ini` changes one value,
-`initialEquipment.xml` swaps three starting items for six, and one class, one SQL file and one item
-file are added:
+`initialEquipment.xml` gains one block, `initialShortcuts.xml` loses one, and one class, one SQL
+file and one item file are added:
 
 | File | Change |
 | --- | --- |
@@ -35,7 +39,8 @@ file are added:
 | `dist/game/config/Player.ini` | `DisableCp = True` |
 | `java/.../data/sql/CharacterAppearanceTable.java` | new: storage, cache, trailer writer |
 | `dist/db_installer/sql/game/character_appearance.sql` | new: the table |
-| `dist/game/data/stats/players/initialEquipment.xml` | class 0 starts in the villager clothes, with the wooden sword |
+| `dist/game/data/stats/players/initialEquipment.xml` | class 0 starts with Alverion's items alone |
+| `dist/game/data/stats/players/initialShortcuts.xml` | no global shortcuts |
 | `dist/game/data/stats/items/30000-30099.xml` | new: Alverion's items |
 
 ## Hardware information

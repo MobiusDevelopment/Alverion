@@ -132,23 +132,41 @@ index 0000000..651163d
 diff --git dist/game/data/stats/players/initialEquipment.xml dist/game/data/stats/players/initialEquipment.xml
 --- dist/game/data/stats/players/initialEquipment.xml
 +++ dist/game/data/stats/players/initialEquipment.xml
-@@ -2,10 +2,13 @@
- <list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/initialEquipment.xsd">
- 	<!-- Human Fighter -->
- 	<equipment classId="0">
--		<item id="2369" count="1" equipped="true" /> <!-- Squire's Sword -->
+@@ -109,2 +109,11 @@
+ 	</equipment>
++	<!-- Alverion: the human fighter again, the class every Alverion character is made as. Being the later of the two, it replaces the one above, so a new character starts with Alverion's items alone. -->
++	<equipment classId="0">
 +		<item id="30006" count="1" equipped="true" /> <!-- Wooden Sword -->
- 		<item id="10" count="1" /> <!-- Dagger -->
--		<item id="1146" count="1" equipped="true" /> <!-- Squire's Shirt -->
--		<item id="1147" count="1" equipped="true" /> <!-- Squire's Pants -->
 +		<item id="30001" count="1" equipped="true" /> <!-- Villager Shirt -->
 +		<item id="30002" count="1" equipped="true" /> <!-- Villager Pants -->
 +		<item id="30003" count="1" equipped="true" /> <!-- Villager Gloves -->
 +		<item id="30004" count="1" equipped="true" /> <!-- Villager Boots -->
 +		<item id="30005" count="1" equipped="true" /> <!-- Villager Hat -->
- 		<item id="5588" count="1" /> <!-- Tutorial Guide -->
- 		<item id="10650" count="5" /> <!-- Adventurer's Scroll of Escape -->
- 		<item id="12753" count="10" /> <!-- Kamael Village Teleportation Scroll -->
++	</equipment>
+ </list>
+\ No newline at end of file
+diff --git dist/game/data/stats/players/initialShortcuts.xml dist/game/data/stats/players/initialShortcuts.xml
+--- dist/game/data/stats/players/initialShortcuts.xml
++++ dist/game/data/stats/players/initialShortcuts.xml
+@@ -1,18 +1,5 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/initialShortcuts.xsd">
+-	<!-- Global shortcuts -->
+-	<shortcuts>
+-		<page pageId="0">
+-			<slot slotId="0" shortcutType="ACTION" shortcutId="2" /> <!-- Attack -->
+-			<slot slotId="3" shortcutType="ACTION" shortcutId="5" /> <!-- Pick Up -->
+-			<slot slotId="10" shortcutType="ACTION" shortcutId="0" /> <!-- Sit/Stand -->
+-			<slot slotId="11" shortcutType="ITEM" shortcutId="5588" /> <!-- Tutorial Guide -->
+-		</page>
+-		<!-- Custom example. -->
+-		<page pageId="1">
+-			<slot slotId="0" shortcutType="MACRO" shortcutId="10000" /> <!-- Macro Test -->
+-		</page>
+-	</shortcuts>
+ 	<!-- Human Mystic -->
+ 	<shortcuts classId="10">
+ 		<page pageId="0">
 diff --git java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java
 new file mode 100644
 index 0000000..f87be59

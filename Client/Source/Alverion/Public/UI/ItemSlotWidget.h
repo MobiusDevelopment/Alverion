@@ -8,6 +8,7 @@
 #include "ItemSlotWidget.generated.h"
 
 class UBorder;
+class UImage;
 class UTextBlock;
 
 namespace Network
@@ -93,6 +94,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UBorder> _frame;
+
+	UPROPERTY()
+	TObjectPtr<UImage> _icon;
 
 	UPROPERTY()
 	TObjectPtr<UTextBlock> _name;
