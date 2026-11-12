@@ -18,6 +18,137 @@ diff --git dist/game/config/Player.ini dist/game/config/Player.ini
 -DisableCp = False
 +DisableCp = True
  
+diff --git dist/game/data/stats/items/30000-30099.xml dist/game/data/stats/items/30000-30099.xml
+new file mode 100644
+index 0000000..651163d
+--- /dev/null
++++ dist/game/data/stats/items/30000-30099.xml
+@@ -0,0 +1,105 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/items.xsd">
++	<!-- Alverion items, from 30000 up: past every stock id and below the custom wyvern at 50000, as item ids top out at 65535. The Alverion client names, describes and dresses them by id. -->
++	<item id="30001" type="Armor" name="Villager Shirt">
++		<set name="armor_type" val="LIGHT" />
++		<set name="bodypart" val="chest" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="3301" />
++		<stats>
++			<stat type="pDef">33</stat>
++		</stats>
++	</item>
++	<item id="30002" type="Armor" name="Villager Pants">
++		<set name="armor_type" val="LIGHT" />
++		<set name="bodypart" val="legs" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="1750" />
++		<stats>
++			<stat type="pDef">20</stat>
++		</stats>
++	</item>
++	<item id="30003" type="Armor" name="Villager Gloves">
++		<set name="bodypart" val="gloves" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="660" />
++		<stats>
++			<stat type="pDef">9</stat>
++		</stats>
++	</item>
++	<item id="30004" type="Armor" name="Villager Boots">
++		<set name="bodypart" val="feet" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="LEATHER" />
++		<set name="price" val="20" />
++		<set name="weight" val="1320" />
++		<stats>
++			<stat type="pDef">13</stat>
++		</stats>
++	</item>
++	<item id="30005" type="Armor" name="Villager Hat">
++		<set name="bodypart" val="head" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="660" />
++		<stats>
++			<stat type="pDef">13</stat>
++		</stats>
++	</item>
++	<item id="30006" type="Weapon" name="Wooden Sword">
++		<set name="bodypart" val="rhand" />
++		<set name="damage_range" val="0;0;40;120" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="WOOD" />
++		<set name="price" val="106" />
++		<set name="soulshots" val="1" />
++		<set name="spiritshots" val="1" />
++		<set name="weapon_type" val="SWORD" />
++		<set name="weight" val="1600" />
++		<stats>
++			<stat type="critRate">8</stat>
++			<stat type="mAtk">5</stat>
++			<stat type="pAtk">6</stat>
++			<stat type="pAtkRange">40</stat>
++			<stat type="pAtkSpd">379</stat>
++			<stat type="randomDamage">10</stat>
++		</stats>
++	</item>
++</list>
+diff --git dist/game/data/stats/players/initialEquipment.xml dist/game/data/stats/players/initialEquipment.xml
+--- dist/game/data/stats/players/initialEquipment.xml
++++ dist/game/data/stats/players/initialEquipment.xml
+@@ -2,10 +2,13 @@
+ <list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/initialEquipment.xsd">
+ 	<!-- Human Fighter -->
+ 	<equipment classId="0">
+-		<item id="2369" count="1" equipped="true" /> <!-- Squire's Sword -->
++		<item id="30006" count="1" equipped="true" /> <!-- Wooden Sword -->
+ 		<item id="10" count="1" /> <!-- Dagger -->
+-		<item id="1146" count="1" equipped="true" /> <!-- Squire's Shirt -->
+-		<item id="1147" count="1" equipped="true" /> <!-- Squire's Pants -->
++		<item id="30001" count="1" equipped="true" /> <!-- Villager Shirt -->
++		<item id="30002" count="1" equipped="true" /> <!-- Villager Pants -->
++		<item id="30003" count="1" equipped="true" /> <!-- Villager Gloves -->
++		<item id="30004" count="1" equipped="true" /> <!-- Villager Boots -->
++		<item id="30005" count="1" equipped="true" /> <!-- Villager Hat -->
+ 		<item id="5588" count="1" /> <!-- Tutorial Guide -->
+ 		<item id="10650" count="5" /> <!-- Adventurer's Scroll of Escape -->
+ 		<item id="12753" count="10" /> <!-- Kamael Village Teleportation Scroll -->
 diff --git java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java
 new file mode 100644
 index 0000000..f87be59

@@ -34,6 +34,12 @@ bool FItemCatalogTest::RunTest(const FString& parameters)
 	// An item the table does not name still shows as something, numbered.
 	TestTrue(TEXT("A stand-in name carries the id"), ItemCatalog::name(987654).ToString().Contains(TEXT("987654")));
 	TestTrue(TEXT("And no description"), ItemCatalog::description(987654).IsEmpty());
+
+	// The shipped files: the shirt the server's starting equipment hands out.
+	const FItemData* shirt = ItemCatalog::find(30001);
+	TestTrue(TEXT("Items.csv carries the starter shirt"), (shirt != nullptr) && (shirt->slot == TEXT("chest")));
+	TestFalse(TEXT("ST_Items names it"), ItemCatalog::name(30001).ToString().Contains(TEXT("30001")));
+	TestFalse(TEXT("And describes it"), ItemCatalog::description(30001).IsEmpty());
 	return true;
 }
 

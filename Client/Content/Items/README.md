@@ -4,7 +4,7 @@
 
 | Column | What |
 | --- | --- |
-| `Id` | The item id, which must not clash with an id the server already uses. |
+| `Id` | The item id, which must not clash with an id the server already uses and cannot pass 65535, the most the server's item schema allows. Alverion's own items start at 30000. |
 | `Slot` | Where it is worn: `head`, `chest`, `back`, `main_hand`, `hands`, `legs`, `feet`, `off_hand`, `ear`, `neck` or `finger`. Empty for items that are not worn. |
 | `Kind` | `weapon`, `armor`, `jewelry`, `consumable`, `material`, `quest` or `currency`. |
 | `Icon` | The texture shown in the bag, as an asset path. Empty for a plain tile. |

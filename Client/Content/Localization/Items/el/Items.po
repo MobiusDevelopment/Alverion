@@ -4,12 +4,96 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Items\n"
-"POT-Creation-Date: 2026-11-12 21:10\n"
-"PO-Revision-Date: 2026-11-12 21:10\n"
+"POT-Creation-Date: 2026-11-12 21:55\n"
+"PO-Revision-Date: 2026-11-12 21:55\n"
 "Language-Team: \n"
 "Language: el\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Key:	30001.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30001.description"
+msgid "A plain linen shirt, the first thing anyone in the villages puts on."
+msgstr "Ένα απλό λινό πουκάμισο, το πρώτο που φορά κανείς στα χωριά."
+
+#. Key:	30001.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30001.name"
+msgid "Villager Shirt"
+msgstr "Χωρικό πουκάμισο"
+
+#. Key:	30002.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30002.description"
+msgid "Sturdy woven trousers, patched at the knees."
+msgstr "Γερό υφαντό παντελόνι, μπαλωμένο στα γόνατα."
+
+#. Key:	30002.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30002.name"
+msgid "Villager Pants"
+msgstr "Χωρικό παντελόνι"
+
+#. Key:	30003.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30003.description"
+msgid "Rough cloth gloves that spare the hands from blisters."
+msgstr "Τραχιά υφασμάτινα γάντια που γλιτώνουν τα χέρια από φουσκάλες."
+
+#. Key:	30003.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30003.name"
+msgid "Villager Gloves"
+msgstr "Χωρικά γάντια"
+
+#. Key:	30004.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30004.description"
+msgid "Soft leather boots, worn in on village roads."
+msgstr "Μαλακές δερμάτινες μπότες, στρωμένες στους δρόμους του χωριού."
+
+#. Key:	30004.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30004.name"
+msgid "Villager Boots"
+msgstr "Χωρικές μπότες"
+
+#. Key:	30005.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30005.description"
+msgid "A wide cloth hat that keeps off the sun and the rain."
+msgstr "Ένα φαρδύ υφασμάτινο καπέλο που κρατά μακριά τον ήλιο και τη βροχή."
+
+#. Key:	30005.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30005.name"
+msgid "Villager Hat"
+msgstr "Χωρικό καπέλο"
+
+#. Key:	30006.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30006.description"
+msgid "A practice blade of hard wood bound with rope, light enough for a first swing."
+msgstr "Μια λεπίδα εξάσκησης από σκληρό ξύλο, δεμένη με σχοινί, αρκετά ελαφριά για το πρώτο χτύπημα."
+
+#. Key:	30006.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30006.name"
+msgid "Wooden Sword"
+msgstr "Ξύλινο σπαθί"
 

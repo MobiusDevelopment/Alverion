@@ -20,7 +20,7 @@ Unreal Engine 5 client for L2J Mobius.
 | Folder | What |
 | --- | --- |
 | `Client` | The Unreal Engine 5.8 project. `Network` speaks the server protocol, `Alverion` is the game. |
-| `ServerPatch` | A patch for `L2J_Mobius` that stores each character's appearance block. See its README. |
+| `ServerPatch` | One patch for `L2J_Mobius` High Five, the SVN project or the free release, that stores each character's appearance block and adds Alverion's items. See its README. |
 
 ## MetaHumans
 

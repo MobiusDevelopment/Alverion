@@ -4,12 +4,96 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Items\n"
-"POT-Creation-Date: 2026-11-12 21:10\n"
-"PO-Revision-Date: 2026-11-12 21:10\n"
+"POT-Creation-Date: 2026-11-12 21:55\n"
+"PO-Revision-Date: 2026-11-12 21:55\n"
 "Language-Team: \n"
 "Language: zh\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#. Key:	30001.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30001.description"
+msgid "A plain linen shirt, the first thing anyone in the villages puts on."
+msgstr "一件朴素的亚麻衬衫，村里人人最先穿上的衣服。"
+
+#. Key:	30001.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30001.name"
+msgid "Villager Shirt"
+msgstr "村民衬衫"
+
+#. Key:	30002.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30002.description"
+msgid "Sturdy woven trousers, patched at the knees."
+msgstr "结实的布织长裤，膝盖上打着补丁。"
+
+#. Key:	30002.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30002.name"
+msgid "Villager Pants"
+msgstr "村民长裤"
+
+#. Key:	30003.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30003.description"
+msgid "Rough cloth gloves that spare the hands from blisters."
+msgstr "粗布手套，让双手免于磨出水泡。"
+
+#. Key:	30003.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30003.name"
+msgid "Villager Gloves"
+msgstr "村民手套"
+
+#. Key:	30004.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30004.description"
+msgid "Soft leather boots, worn in on village roads."
+msgstr "柔软的皮靴，在村路上穿得服帖。"
+
+#. Key:	30004.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30004.name"
+msgid "Villager Boots"
+msgstr "村民靴子"
+
+#. Key:	30005.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30005.description"
+msgid "A wide cloth hat that keeps off the sun and the rain."
+msgstr "一顶宽檐布帽，能遮阳挡雨。"
+
+#. Key:	30005.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30005.name"
+msgid "Villager Hat"
+msgstr "村民帽子"
+
+#. Key:	30006.description
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30006.description"
+msgid "A practice blade of hard wood bound with rope, light enough for a first swing."
+msgstr "缠着绳子的硬木练习剑，轻得正适合第一次挥舞。"
+
+#. Key:	30006.name
+#. SourceLocation:	Localization/StringTables/ST_Items.csv
+#: Localization/StringTables/ST_Items.csv
+msgctxt "ST_Items,30006.name"
+msgid "Wooden Sword"
+msgstr "木剑"
 
