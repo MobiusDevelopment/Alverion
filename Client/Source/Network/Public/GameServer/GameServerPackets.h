@@ -41,3 +41,4 @@
 #include "GameServer/ClientPackets/RequestShortcutReg.h"
 #include "GameServer/ClientPackets/RequestShortcutDel.h"
 #include "GameServer/ClientPackets/RequestSaveInventoryOrder.h"
+#include "GameServer/ClientPackets/RequestDestroyItem.h"

@@ -67,6 +67,9 @@ public:
 	/** Saves the bag's order as pairs of object id and place, here at once and on the server. */
 	bool saveInventoryOrder(TConstArrayView<TPair<uint32, int32>> order);
 
+	/** Asks the server to destroy this many of an item. It answers with an InventoryUpdate, or keeps an item that cannot be destroyed. */
+	bool destroyItem(uint32 objectId, int64 count);
+
 	FCharacterSpawned onSpawned;
 	FCharacterDespawned onDespawned;
 	FCharacterMoved onMoved;

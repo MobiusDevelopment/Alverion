@@ -257,6 +257,19 @@ bool FInventoryRequestsTest::RunTest(const FString& parameters)
 	TestEqual(TEXT("RequestSaveInventoryOrder"), static_cast<int32>(subOpcode), 0x24);
 	TestEqual(TEXT("Capped at the server's limit"), count, Network::GameServer::inventoryOrderLimit);
 	TestEqual(TEXT("Two ints a pair"), saveReader.remaining(), count * 8);
+
+	// A count past what an int holds, so both halves of the long are checked.
+	Network::FWriteBuffer destroy;
+	Network::GameServer::writeRequestDestroyItem(destroy, 268480002, 5000000000LL);
+	Network::FReadBuffer destroyReader(destroy.bytes());
+	int64 destroyed = 0;
+	destroyReader.readUInt8(opcode);
+	destroyReader.readInt32(value);
+	destroyReader.readInt64(destroyed);
+	TestEqual(TEXT("RequestDestroyItem opcode"), static_cast<int32>(opcode), 0x60);
+	TestEqual(TEXT("RequestDestroyItem names the object"), value, 268480002);
+	TestEqual(TEXT("And the count as a long"), destroyed, static_cast<int64>(5000000000LL));
+	TestEqual(TEXT("Nothing after the count"), destroyReader.remaining(), 0);
 	return true;
 }
 

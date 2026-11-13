@@ -231,6 +231,13 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 
 		bag->AddChildToVerticalBox(bagView);
 
+		// The bin under the bag's last column: an item dropped on it is destroyed once the player confirms.
+		// Kept clear of the scrollbar's width as well, which the grid above stops short of.
+		const float scrollbarWidth = scroll->GetScrollbarThickness().X + scroll->GetScrollbarPadding().Left + scroll->GetScrollbarPadding().Right;
+		UVerticalBoxSlot* binSlot = bag->AddChildToVerticalBox(makeItemSlot(*WidgetTree, EItemSlotKind::Bin, 0, FText::GetEmpty()));
+		binSlot->SetHorizontalAlignment(HAlign_Right);
+		binSlot->SetPadding(FMargin(0.0f, bagSlotGap, (bagSlotGap * 0.5f) + scrollbarWidth, 0.0f));
+
 		WidgetTree->RootWidget = root;
 
 		// Focusable, so the keys reach it once CommonUI puts the focus here.

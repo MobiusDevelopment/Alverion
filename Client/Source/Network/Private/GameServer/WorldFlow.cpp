@@ -108,6 +108,19 @@ bool FWorldFlow::useItem(uint32 objectId)
 	return true;
 }
 
+bool FWorldFlow::destroyItem(uint32 objectId, int64 count)
+{
+	if (!canSend() || (objectId == 0) || (count <= 0))
+	{
+		return false;
+	}
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestDestroyItem(buffer, objectId, count);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
 bool FWorldFlow::unequip(int32 bodyPartMask)
 {
 	if (!canSend() || (bodyPartMask == 0))

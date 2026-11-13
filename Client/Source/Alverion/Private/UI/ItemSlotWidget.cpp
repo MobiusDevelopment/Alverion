@@ -14,7 +14,9 @@
 #include "Items/ItemCatalog.h"
 #include "ServerConnectionSubsystem.h"
 #include "UI/InventoryLayout.h"
+#include "UI/LocalizedText.h"
 #include "UI/UIStyle.h"
+#include "UI/UISubsystem.h"
 
 namespace
 {
@@ -38,6 +40,9 @@ namespace
 
 	// A shortcut whose item is gone, or one of a kind this client has nothing to use by yet.
 	constexpr FLinearColor itemSlotDormantFill = FLinearColor(0.08f, 0.07f, 0.06f, 1.0f);
+
+	// The bin's picture, loaded quietly since the bin shows its name instead until the picture exists.
+	const TCHAR* const itemSlotBinIconPath = TEXT("/Game/UI/Icons/T_Icon_Bin.T_Icon_Bin");
 
 	// The letters a shortcut of each kind shows until it has a picture, by the server's numbering.
 	const TCHAR* const itemSlotShortcutLetters[] = { TEXT(""), TEXT(""), TEXT("S"), TEXT("A"), TEXT("M"), TEXT("R"), TEXT("B") };
@@ -120,6 +125,23 @@ void UItemSlotWidget::refreshLook()
 {
 	if (_frame == nullptr)
 	{
+		return;
+	}
+
+	if (_kind == EItemSlotKind::Bin)
+	{
+		UTexture2D* binIcon = LoadObject<UTexture2D>(nullptr, itemSlotBinIconPath, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (binIcon != nullptr)
+		{
+			_icon->SetBrushFromTexture(binIcon);
+		}
+
+		_icon->SetVisibility((binIcon != nullptr) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		_frame->SetBrush(UIStyle::stateBrush(itemSlotEmptyFill, UIStyle::outline, itemSlotRadius));
+		_name->SetText((binIcon != nullptr) ? FText::GetEmpty() : LocalizedText::get(TEXT("inventory.bin")));
+		_count->SetText(FText::GetEmpty());
+		_caption->SetVisibility(ESlateVisibility::Collapsed);
+		SetToolTipText(LocalizedText::get(TEXT("inventory.bin_tooltip")));
 		return;
 	}
 
@@ -261,6 +283,18 @@ bool UItemSlotWidget::NativeOnDrop(const FGeometry& geometry, const FDragDropEve
 		return true;
 	}
 
+	// Only an item goes in the bin, never a shortcut, and only once the player says so. The server keeps what cannot be destroyed.
+	if (_kind == EItemSlotKind::Bin)
+	{
+		if ((drag->sourceKind == EItemSlotKind::Bar) || (drag->objectId == 0))
+		{
+			return false;
+		}
+
+		confirmDestroy(drag->objectId);
+		return true;
+	}
+
 	if (_kind == EItemSlotKind::Bar)
 	{
 		// A shortcut moved along the bar swaps with whatever the slot held; an item dropped here gets a new shortcut.
@@ -317,6 +351,39 @@ bool UItemSlotWidget::NativeOnDrop(const FGeometry& geometry, const FDragDropEve
 	}
 
 	return true;
+}
+
+void UItemSlotWidget::confirmDestroy(uint32 objectId)
+{
+	Network::FWorldFlow* flow = world();
+	UGameInstance* gameInstance = GetGameInstance();
+	UUISubsystem* ui = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UUISubsystem>() : nullptr;
+	if ((flow == nullptr) || (ui == nullptr))
+	{
+		return;
+	}
+
+	const Network::FInventoryItem* item = flow->items().FindByPredicate([objectId](const Network::FInventoryItem& candidate)
+	{
+		return candidate.objectId == objectId;
+	});
+
+	if (item == nullptr)
+	{
+		return;
+	}
+
+	// The whole stack goes, so the question names how many.
+	const int64 count = item->count;
+	const FText name = (count > 1) ? FText::Format(INVTEXT("{0} ({1})"), ItemCatalog::name(item->itemId), FText::AsNumber(count)) : ItemCatalog::name(item->itemId);
+	ui->askConfirm(FText::Format(LocalizedText::get(TEXT("inventory.destroy_confirm")), name), FOnConfirmAnswered::CreateWeakLambda(this, [this, objectId, count](bool confirmed)
+	{
+		Network::FWorldFlow* answerFlow = world();
+		if (confirmed && (answerFlow != nullptr))
+		{
+			answerFlow->destroyItem(objectId, count);
+		}
+	}));
 }
 
 void UItemSlotWidget::NativeOnDragCancelled(const FDragDropEvent& dragDropEvent, UDragDropOperation* operation)

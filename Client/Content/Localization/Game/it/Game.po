@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-12 22:39\n"
-"PO-Revision-Date: 2026-11-12 22:39\n"
+"POT-Creation-Date: 2026-11-13 06:29\n"
+"PO-Revision-Date: 2026-11-13 06:29\n"
 "Language-Team: \n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
@@ -286,12 +286,33 @@ msgctxt "ST_Game,chat.shout"
 msgid "Shout"
 msgstr "Urlare"
 
+#. Key:	inventory.bin
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.bin"
+msgid "Bin"
+msgstr "Cestino"
+
+#. Key:	inventory.bin_tooltip
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.bin_tooltip"
+msgid "Drop an item here to destroy it."
+msgstr "Trascina qui un oggetto per distruggerlo."
+
 #. Key:	inventory.character
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
 #: Localization/StringTables/ST_Game.csv
 msgctxt "ST_Game,inventory.character"
 msgid "Character"
 msgstr "Personaggio"
+
+#. Key:	inventory.destroy_confirm
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,inventory.destroy_confirm"
+msgid "Destroy {0}?\nThis cannot be undone."
+msgstr "Distruggere {0}?\nL'azione non si può annullare."
 
 #. Key:	inventory.item_unknown
 #. SourceLocation:	Localization/StringTables/ST_Game.csv

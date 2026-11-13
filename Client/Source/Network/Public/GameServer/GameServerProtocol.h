@@ -358,6 +358,7 @@ namespace Opcode
 	inline constexpr uint8 say2 = 0x49;
 	inline constexpr uint8 requestRestart = 0x57;
 	inline constexpr uint8 validatePosition = 0x59;
+	inline constexpr uint8 requestDestroyItem = 0x60;
 	inline constexpr uint8 characterRestore = 0x7B;
 
 	// Extended client packets: this byte, then a uint16 naming the packet.

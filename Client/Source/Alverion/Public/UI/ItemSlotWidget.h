@@ -16,12 +16,13 @@ namespace Network
 	class FWorldFlow;
 }
 
-/** Which of the three places a slot belongs to, which decides what dropping something on it does. */
+/** Which place a slot belongs to, which decides what dropping something on it does. The bin holds nothing: an item dropped on it is destroyed once the player confirms. */
 enum class EItemSlotKind : uint8
 {
 	Bag,
 	Paperdoll,
-	Bar
+	Bar,
+	Bin
 };
 
 /** What is being dragged: where it came from and what it is. A shortcut drags as the shortcut, so moving it never moves the item. */
@@ -81,6 +82,9 @@ private:
 
 	/** Whether there is anything to drag or use. */
 	bool holdsSomething() const;
+
+	/** Asks the player whether to destroy an item, and asks the server to when they agree. */
+	void confirmDestroy(uint32 objectId);
 
 	EItemSlotKind _kind = EItemSlotKind::Bag;
 	int32 _index = 0;
