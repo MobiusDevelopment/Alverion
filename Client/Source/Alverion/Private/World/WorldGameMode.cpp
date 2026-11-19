@@ -10,8 +10,12 @@
 #include "UI/ArrivalCover.h"
 #include "UI/ChatWidget.h"
 #include "UI/RootLayout.h"
+#include "UI/LocalizedText.h"
 #include "UI/StatusBarsWidget.h"
+#include "UI/TargetFrameWidget.h"
+#include "UI/UISubsystem.h"
 #include "ServerConnectionSubsystem.h"
+#include "TimerManager.h"
 #include "World/WorldCharacter.h"
 
 namespace
@@ -24,6 +28,12 @@ namespace
 
 	// Sixty degrees either side of the way the character faces. The server asks for no direction at all, so this only keeps the pick to what is ahead.
 	constexpr double talkConeCosine = 0.5;
+
+	// The server sends an Attack as the swing starts and the blow lands partway through it, which is when the struck flinch and their numbers show.
+	constexpr float worldAttackLandSeconds = 0.35f;
+
+	// The server lets a corpse be looted within 150 of its units. The character stands over it to loot, so this is nearer.
+	constexpr double worldLootRangeCm = 60.0 * Network::worldUnitCm;
 }
 
 AWorldGameMode::AWorldGameMode()
@@ -82,6 +92,12 @@ void AWorldGameMode::BeginPlay()
 		statusBars->AddToViewport(-1);
 	}
 
+	UTargetFrameWidget* targetFrame = CreateWidget<UTargetFrameWidget>(world, UTargetFrameWidget::StaticClass());
+	if (targetFrame != nullptr)
+	{
+		targetFrame->AddToViewport(-1);
+	}
+
 	// Black for a second while the world draws, then a fade.
 	UArrivalCover* cover = CreateWidget<UArrivalCover>(world, UArrivalCover::StaticClass());
 	if (cover != nullptr)
@@ -128,6 +144,10 @@ void AWorldGameMode::BeginPlay()
 	flow.onDespawned.BindUObject(this, &AWorldGameMode::despawned);
 	flow.onMoved.BindUObject(this, &AWorldGameMode::moved);
 	flow.onMoveTypeChanged.BindUObject(this, &AWorldGameMode::moveTypeChanged);
+	flow.onAttack.BindUObject(this, &AWorldGameMode::attacked);
+	flow.onLifeChanged.BindUObject(this, &AWorldGameMode::lifeChanged);
+	flow.onCombatStance.BindUObject(this, &AWorldGameMode::stanceChanged);
+	flow.onCorpseLoot.BindUObject(this, &AWorldGameMode::lootReceived);
 
 	// A lost link goes back to the login screen, which is what the front end shows for anything but a character list.
 	link->gameServer().onFailed.BindWeakLambda(this, [this](const FString& reason)
@@ -148,6 +168,10 @@ void AWorldGameMode::EndPlay(const EEndPlayReason::Type reason)
 		flow.onDespawned.Unbind();
 		flow.onMoved.Unbind();
 		flow.onMoveTypeChanged.Unbind();
+		flow.onAttack.Unbind();
+		flow.onLifeChanged.Unbind();
+		flow.onCombatStance.Unbind();
+		flow.onCorpseLoot.Unbind();
 		flow.end();
 		link->gameServer().onFailed.Unbind();
 		link->gameServer().onStepChanged.Unbind();
@@ -184,14 +208,35 @@ void AWorldGameMode::returnToCharacterSelect()
 
 uint32 AWorldGameMode::townspersonInFront(const AActor& character) const
 {
-	const FVector origin = character.GetActorLocation();
-	const FVector forward = character.GetActorForwardVector().GetSafeNormal2D();
+	return inFront(character.GetActorLocation(), character.GetActorForwardVector(), talkRangeCm, EPick::Townsperson);
+}
 
+uint32 AWorldGameMode::monsterInFront(const FVector& origin, const FVector& forward, double reachCm) const
+{
+	return inFront(origin, forward, reachCm, EPick::Monster);
+}
+
+uint32 AWorldGameMode::corpseInFront(const AActor& character) const
+{
+	return inFront(character.GetActorLocation(), character.GetActorForwardVector(), worldLootRangeCm, EPick::Corpse);
+}
+
+uint32 AWorldGameMode::inFront(const FVector& origin, const FVector& forwardDirection, double reachCm, EPick pick) const
+{
+	const FVector forward = forwardDirection.GetSafeNormal2D();
 	uint32 nearestObjectId = 0;
-	double nearestDistance = talkRangeCm;
+	double nearestDistance = reachCm;
 	for (const TPair<uint32, TObjectPtr<AProxyCharacter>>& proxy : _proxies)
 	{
-		if ((proxy.Value == nullptr) || !proxy.Value->isTownsperson())
+		if (proxy.Value == nullptr)
+		{
+			continue;
+		}
+
+		const bool monster = proxy.Value->isMonster();
+		const bool fallen = proxy.Value->isFallen();
+		const bool wanted = (pick == EPick::Townsperson) ? proxy.Value->isTownsperson() : (pick == EPick::Monster) ? (monster && !fallen) : (monster && fallen);
+		if (!wanted)
 		{
 			continue;
 		}
@@ -207,6 +252,186 @@ uint32 AWorldGameMode::townspersonInFront(const AActor& character) const
 	}
 
 	return nearestObjectId;
+}
+
+FString AWorldGameMode::nameOf(uint32 objectId) const
+{
+	const TObjectPtr<AProxyCharacter>* proxy = _proxies.Find(objectId);
+	return ((proxy != nullptr) && (*proxy != nullptr)) ? (*proxy)->displayName() : FString();
+}
+
+AWorldCharacter* AWorldGameMode::localCharacter() const
+{
+	return Cast<AWorldCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+}
+
+uint32 AWorldGameMode::localObjectId() const
+{
+	UServerConnectionSubsystem* link = connection();
+	return (link != nullptr) ? link->gameServer().selected().objectId : 0;
+}
+
+bool AWorldGameMode::locationOf(uint32 objectId, FVector& location) const
+{
+	if (objectId == localObjectId())
+	{
+		const AWorldCharacter* character = localCharacter();
+		if (character != nullptr)
+		{
+			location = character->GetActorLocation();
+		}
+
+		return character != nullptr;
+	}
+
+	const TObjectPtr<AProxyCharacter>* proxy = _proxies.Find(objectId);
+	if ((proxy == nullptr) || (*proxy == nullptr))
+	{
+		return false;
+	}
+
+	location = (*proxy)->GetActorLocation();
+	return true;
+}
+
+void AWorldGameMode::attacked(const Network::FAttack& attack)
+{
+	if (attack.hits.IsEmpty())
+	{
+		return;
+	}
+
+	// The attacker swings at once, turned to the first one it strikes.
+	FVector targetLocation = FVector::ZeroVector;
+	const bool targetKnown = locationOf(attack.hits[0].targetId, targetLocation);
+	if (attack.attackerId == localObjectId())
+	{
+		AWorldCharacter* character = localCharacter();
+		if ((character != nullptr) && targetKnown)
+		{
+			character->strike(targetLocation);
+		}
+		else if (character != nullptr)
+		{
+			character->strikeAir();
+		}
+	}
+	else
+	{
+		const TObjectPtr<AProxyCharacter>* attacker = _proxies.Find(attack.attackerId);
+		if ((attacker != nullptr) && (*attacker != nullptr))
+		{
+			(*attacker)->strike(targetKnown ? targetLocation : (*attacker)->GetActorLocation());
+		}
+	}
+
+	// The blows land a moment into the swing. Whoever was struck is looked up then, since a creature can leave in between.
+	const TArray<Network::FAttackHit> hits = attack.hits;
+	FTimerHandle landing;
+	GetWorldTimerManager().SetTimer(landing, FTimerDelegate::CreateWeakLambda(this, [this, hits]()
+	{
+		const uint32 self = localObjectId();
+		for (const Network::FAttackHit& hit : hits)
+		{
+			if (hit.targetId == self)
+			{
+				AWorldCharacter* character = localCharacter();
+				if (character != nullptr)
+				{
+					character->takeHit(hit.damage, hit.flags);
+				}
+
+				continue;
+			}
+
+			const TObjectPtr<AProxyCharacter>* struck = _proxies.Find(hit.targetId);
+			if ((struck != nullptr) && (*struck != nullptr))
+			{
+				(*struck)->takeHit(hit.damage, hit.flags);
+			}
+		}
+	}), worldAttackLandSeconds, false);
+}
+
+void AWorldGameMode::lifeChanged(uint32 objectId, bool alive)
+{
+	if (objectId == localObjectId())
+	{
+		AWorldCharacter* character = localCharacter();
+		if (character != nullptr)
+		{
+			character->setFallen(!alive);
+		}
+
+		AClientPlayerController* controller = Cast<AClientPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
+		if (!alive)
+		{
+			offerReturnToVillage();
+		}
+		else if (controller != nullptr)
+		{
+			controller->closeDeathMenu();
+		}
+
+		return;
+	}
+
+	const TObjectPtr<AProxyCharacter>* proxy = _proxies.Find(objectId);
+	if ((proxy != nullptr) && (*proxy != nullptr))
+	{
+		(*proxy)->setFallen(!alive);
+	}
+}
+
+void AWorldGameMode::stanceChanged(uint32 objectId, bool inCombat)
+{
+	if (objectId == localObjectId())
+	{
+		AWorldCharacter* character = localCharacter();
+		if (character != nullptr)
+		{
+			character->setInCombat(inCombat);
+		}
+
+		return;
+	}
+
+	const TObjectPtr<AProxyCharacter>* proxy = _proxies.Find(objectId);
+	if ((proxy != nullptr) && (*proxy != nullptr))
+	{
+		(*proxy)->setInCombat(inCombat);
+	}
+}
+
+void AWorldGameMode::lootReceived(const Network::FCorpseLoot& loot)
+{
+	AClientPlayerController* controller = Cast<AClientPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
+	if (controller != nullptr)
+	{
+		controller->showLoot(loot, FText::FromString(nameOf(loot.corpseId)));
+	}
+}
+
+void AWorldGameMode::offerReturnToVillage()
+{
+	const AWorldCharacter* character = localCharacter();
+	AClientPlayerController* controller = Cast<AClientPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
+	if ((character == nullptr) || !character->isFallen() || (controller == nullptr))
+	{
+		return;
+	}
+
+	// Respawn asks for the nearest village, and the server's Revive gets the character up there.
+	const TWeakObjectPtr<AWorldGameMode> weakThis(this);
+	controller->showDeathMenu([weakThis]()
+	{
+		AWorldGameMode* mode = weakThis.Get();
+		UServerConnectionSubsystem* link = (mode != nullptr) ? mode->connection() : nullptr;
+		if (link != nullptr)
+		{
+			link->world().returnToVillage();
+		}
+	});
 }
 
 bool AWorldGameMode::distanceToCreature(uint32 objectId, const AActor& from, double& distanceCm) const

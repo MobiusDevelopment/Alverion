@@ -39,6 +39,9 @@ struct FFootIkAnimInstanceProxy : public FAnimSingleNodeInstanceProxy
 	float lift = 0.0f;
 	bool plantFeet = false;
 	float headScale = 1.0f;
+
+	/** Fallen, which keeps the pelvis of a body lying down from sinking below the ground it lies on. */
+	bool fallen = false;
 	bool groundValid[2] = { false, false };
 	FVector groundPoints[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	TArray<FFootSolePoint> solePoints;
@@ -62,6 +65,12 @@ public:
 
 	/** How far the whole body rises above the clip, in component space, for a body whose clips reach lower than its reference pose stands. */
 	float lift = 0.0f;
+
+	/** When the one-off playing over the body's motions ends, in world seconds. The motions wait until then. */
+	double actionEndSeconds = 0.0;
+
+	/** Fallen, which holds the fall's last pose until the body gets up. */
+	bool fallen = false;
 
 
 protected:

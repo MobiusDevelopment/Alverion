@@ -53,6 +53,9 @@ public:
 	// The action that uses an action bar slot, or null past the bar's end.
 	UInputAction* getShortcutAction(int32 index) const;
 
+	/** The attack key, which swings at whatever is in front. Made here rather than as an asset, like the action bar's keys. */
+	UInputAction* getAttackAction() const;
+
 private:
 	void buildDefaultMappings();
 
@@ -62,4 +65,7 @@ private:
 	// One per action bar slot, made at startup: each needs a rebindable name of its own, and ten assets would only repeat each other.
 	UPROPERTY()
 	TArray<TObjectPtr<UInputAction>> _shortcutActions;
+
+	UPROPERTY()
+	TObjectPtr<UInputAction> _attackAction;
 };

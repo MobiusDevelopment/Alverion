@@ -809,6 +809,103 @@ namespace
 			scheduleQueuedBody(world);
 		}
 	}
+
+	// The starter sword's component, and the tag it carries while held ready, so dressing the body again keeps it in the hand.
+	const TCHAR* const appearanceWeaponName = TEXT("StarterWoodenSword");
+	const FName appearanceWeaponReadyTag(TEXT("AlverionWeaponReady"));
+
+	/**
+	 * Where the starter sword sits on a body, as a bone and a transform relative to it, both read off the reference pose: carried at the left hip, or held ready in the right hand.
+	 * The mesh's own Z runs along the blade from the grip. In the hand the grip sits in the curl of the fingers and the blade leaves the fist on the index finger's side. False when the body lacks the bones.
+	 */
+	bool weaponPlacement(const USkeletalMeshComponent& body, const USkeletalMesh& actualBody, bool ready, FName& bone, FTransform& relative)
+	{
+		if (ready)
+		{
+			const FName hand(TEXT("hand_r"));
+			const FName middle(TEXT("middle_01_r"));
+			const FName index(TEXT("index_01_r"));
+			const FName pinky(TEXT("pinky_01_r"));
+			if (!body.DoesSocketExist(hand) || !body.DoesSocketExist(middle) || !body.DoesSocketExist(index) || !body.DoesSocketExist(pinky))
+			{
+				return false;
+			}
+
+			const FTransform handReference(actualBody.GetComposedRefPoseMatrix(hand));
+			const FVector wrist = handReference.GetLocation();
+			const FVector knuckle = actualBody.GetComposedRefPoseMatrix(middle).GetOrigin();
+			const FVector across = (actualBody.GetComposedRefPoseMatrix(index).GetOrigin() - actualBody.GetComposedRefPoseMatrix(pinky).GetOrigin()).GetSafeNormal();
+			const FVector grip = wrist + (knuckle - wrist) * 0.6;
+			const FTransform held(FRotationMatrix::MakeFromZX(across, (knuckle - wrist).GetSafeNormal()).ToQuat(), grip);
+			bone = hand;
+			relative = held.GetRelativeTransform(handReference);
+			return true;
+		}
+
+		const FName pelvis(TEXT("pelvis"));
+		if (!body.DoesSocketExist(pelvis) || !body.DoesSocketExist(TEXT("thigh_l")) || !body.DoesSocketExist(TEXT("thigh_r")))
+		{
+			return false;
+		}
+
+		const FTransform carryReference(actualBody.GetComposedRefPoseMatrix(pelvis));
+		const FVector leftHip = actualBody.GetComposedRefPoseMatrix(FName(TEXT("thigh_l"))).GetOrigin();
+		const FVector rightHip = actualBody.GetComposedRefPoseMatrix(FName(TEXT("thigh_r"))).GetOrigin();
+		const FVector hipSpan = leftHip - rightHip;
+		const FVector left = FVector(hipSpan.X, hipSpan.Y, 0.0).GetSafeNormal();
+		const FVector forward = FVector::CrossProduct(FVector::UpVector, left);
+		const FVector bladeDirection = (-FVector::UpVector - forward * 0.28).GetSafeNormal();
+		const FVector grip = leftHip + FVector::UpVector * 12.0 + left * 14.0 + forward * 2.0;
+		const FTransform carry(FRotationMatrix::MakeFromZX(bladeDirection, forward).ToQuat(), grip);
+		bone = pelvis;
+		relative = carry.GetRelativeTransform(carryReference);
+		return true;
+	}
+
+	/** Puts the starter sword on a body where it belongs, at the hip or ready in hand, shown or hidden, reusing the one already there. False when the sword or the body's bones are missing. */
+	bool appearanceStandSword(AActor& avatar, USkeletalMeshComponent& body, const USkeletalMesh& actualBody, bool visible)
+	{
+		const FName weaponName(appearanceWeaponName);
+		UStaticMeshComponent* weapon = FindObjectFast<UStaticMeshComponent>(&avatar, weaponName);
+		UStaticMesh* sword = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Equipment/Weapons/StarterWoodenSword/SM_StarterWoodenSword.SM_StarterWoodenSword"));
+		FName bone;
+		FTransform relative;
+		const bool ready = (weapon != nullptr) && weapon->ComponentHasTag(appearanceWeaponReadyTag);
+		if ((sword == nullptr) || !weaponPlacement(body, actualBody, ready, bone, relative))
+		{
+			if (weapon != nullptr)
+			{
+				weapon->SetVisibility(false);
+			}
+
+			return false;
+		}
+
+		if (weapon == nullptr)
+		{
+			weapon = NewObject<UStaticMeshComponent>(&avatar, weaponName);
+			avatar.AddInstanceComponent(weapon);
+			weapon->SetupAttachment(&body, bone);
+		}
+
+		if ((weapon->GetAttachParent() != &body) || (weapon->GetAttachSocketName() != bone))
+		{
+			weapon->AttachToComponent(&body, FAttachmentTransformRules::KeepRelativeTransform, bone);
+		}
+
+		weapon->SetStaticMesh(sword);
+		weapon->SetAbsolute(false, false, true);
+		weapon->SetRelativeTransform(relative);
+		weapon->SetWorldScale3D(FVector(Appearance::heightScale(avatar)));
+		weapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		weapon->SetVisibility(visible);
+		if (!weapon->IsRegistered())
+		{
+			weapon->RegisterComponent();
+		}
+
+		return true;
+	}
 }
 
 namespace Appearance
@@ -995,7 +1092,8 @@ namespace Appearance
 			TEXT("/Game/Characters/Animations/UAL/Swim_Fwd_Loop.Swim_Fwd_Loop"),
 			TEXT("/Game/Characters/Animations/UAL/Goblin/Idle_Selection_Loop_Goblin.Idle_Selection_Loop_Goblin"),
 			TEXT("/Game/Characters/Animations/UAL/Goblin/Jog_Fwd_Loop_Goblin.Jog_Fwd_Loop_Goblin"),
-			TEXT("/Game/Characters/Animations/UAL/Walk_Loop.Walk_Loop")
+			TEXT("/Game/Characters/Animations/UAL/Walk_Loop.Walk_Loop"),
+			TEXT("/Game/Characters/Animations/UAL/Sword_Idle.Sword_Idle")
 		};
 		static_assert(UE_ARRAY_COUNT(clips) == static_cast<uint8>(EMotion::Move), "Every motion before Move plays a clip of its own; Move and GoblinMove pick among them.");
 
@@ -1059,9 +1157,16 @@ namespace Appearance
 			return;
 		}
 
+		// A strike, a flinch or a fall plays out before the body goes back to moving.
+		const UWorld* world = body.GetWorld();
+		if (player->fallen || ((world != nullptr) && (world->GetTimeSeconds() < player->actionEndSeconds)))
+		{
+			return;
+		}
+
 		// Standing feet find the ground. A running stride on a slope puts one foot far above the other, and bending to both folds the front leg, so running keeps the clip.
 		// So do falling and swimming, and the goblin's clips already meet the ground it tilts to.
-		player->grounded = (motion == EMotion::Idle);
+		player->grounded = (motion == EMotion::Idle) || (motion == EMotion::CombatIdle);
 		player->plantFeet = (motion == EMotion::Walk) && (mesh->ComponentHasTag(appearanceDwarfTag) || mesh->ComponentHasTag(appearanceOrcTag));
 		float lift = 0.0f;
 		if (mesh->ComponentHasTag(appearanceDwarfTag))
@@ -1358,51 +1463,9 @@ namespace Appearance
 			clipping->configure(hair, body, hatVisible ? FindObjectFast<USkeletalMeshComponent>(&avatar, TEXT("SKM_Villager_Hat")) : nullptr);
 		}
 
-		const FName weaponName(TEXT("StarterWoodenSword"));
-		const FName carryBone(TEXT("pelvis"));
-		UStaticMeshComponent* weapon = FindObjectFast<UStaticMeshComponent>(&avatar, weaponName);
-		UStaticMesh* sword = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Equipment/Weapons/StarterWoodenSword/SM_StarterWoodenSword.SM_StarterWoodenSword"));
-		if (sword == nullptr || !body->DoesSocketExist(carryBone) || !body->DoesSocketExist(TEXT("thigh_l")) || !body->DoesSocketExist(TEXT("thigh_r")))
+		if (!appearanceStandSword(avatar, *body, *actualBody, !pieceFiltered && !fallback && ((worn & wornSword) != 0)))
 		{
 			complete = false;
-			if (weapon != nullptr)
-			{
-				weapon->SetVisibility(false);
-			}
-		}
-		else
-		{
-			if (weapon == nullptr)
-			{
-				weapon = NewObject<UStaticMeshComponent>(&avatar, weaponName);
-				avatar.AddInstanceComponent(weapon);
-				weapon->SetupAttachment(body, carryBone);
-			}
-
-			const FTransform carryReference(actualBody->GetComposedRefPoseMatrix(carryBone));
-			const FVector leftHip = actualBody->GetComposedRefPoseMatrix(FName(TEXT("thigh_l"))).GetOrigin();
-			const FVector rightHip = actualBody->GetComposedRefPoseMatrix(FName(TEXT("thigh_r"))).GetOrigin();
-			const FVector hipSpan = leftHip - rightHip;
-			const FVector left = FVector(hipSpan.X, hipSpan.Y, 0.0).GetSafeNormal();
-			const FVector forward = FVector::CrossProduct(FVector::UpVector, left);
-			const FVector bladeDirection = (-FVector::UpVector - forward * 0.28).GetSafeNormal();
-			const FVector grip = leftHip + FVector::UpVector * 12.0 + left * 14.0 + forward * 2.0;
-			const FTransform carry(FRotationMatrix::MakeFromZX(bladeDirection, forward).ToQuat(), grip);
-			if (weapon->GetAttachParent() != body || weapon->GetAttachSocketName() != carryBone)
-			{
-				weapon->AttachToComponent(body, FAttachmentTransformRules::KeepRelativeTransform, carryBone);
-			}
-
-			weapon->SetStaticMesh(sword);
-			weapon->SetAbsolute(false, false, true);
-			weapon->SetRelativeTransform(carry.GetRelativeTransform(carryReference));
-			weapon->SetWorldScale3D(FVector(heightScale(avatar)));
-			weapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			weapon->SetVisibility(!pieceFiltered && !fallback && ((worn & wornSword) != 0));
-			if (!weapon->IsRegistered())
-			{
-				weapon->RegisterComponent();
-			}
 		}
 
 		const FString profileName = TEXT("MI_Coverage_") + race + TEXT("_") + donor;
@@ -1550,6 +1613,134 @@ namespace Appearance
 	void requestBodyClass(const Network::FAppearance& appearance, TFunction<void(UClass*)> whenReady)
 	{
 		requestNamedBodyClass(characterNameFor(appearance), appearance.species == Network::EAppearanceSpecies::Dwarf, MoveTemp(whenReady));
+	}
+
+	void perform(AActor& body, EAction action, int32 variant)
+	{
+		// More than one clip a kind where the library has them, taken in turn, so blows in a row do not repeat.
+		static const TCHAR* const swordClips[] =
+		{
+			TEXT("/Game/Characters/Animations/UAL/Sword_Regular_A.Sword_Regular_A"),
+			TEXT("/Game/Characters/Animations/UAL/Sword_Regular_B.Sword_Regular_B"),
+			TEXT("/Game/Characters/Animations/UAL/Sword_Regular_C.Sword_Regular_C")
+		};
+		static const TCHAR* const punchClips[] =
+		{
+			TEXT("/Game/Characters/Animations/UAL/Punch_Jab.Punch_Jab"),
+			TEXT("/Game/Characters/Animations/UAL/Punch_Cross.Punch_Cross")
+		};
+		static const TCHAR* const hitClips[] =
+		{
+			TEXT("/Game/Characters/Animations/UAL/Hit_Chest.Hit_Chest"),
+			TEXT("/Game/Characters/Animations/UAL/Hit_Head.Hit_Head")
+		};
+		static const TCHAR* const fallClips[] =
+		{
+			TEXT("/Game/Characters/Animations/UAL/Death01.Death01")
+		};
+
+		USkeletalMeshComponent* mesh = findMesh(body, TEXT("Body"));
+		UFootIkAnimInstance* player = (mesh != nullptr) ? footIkOf(*mesh) : nullptr;
+		const UWorld* world = body.GetWorld();
+		if ((player == nullptr) || (world == nullptr) || player->fallen)
+		{
+			return;
+		}
+
+		const double now = world->GetTimeSeconds();
+		if ((action == EAction::Hit) && (now < player->actionEndSeconds))
+		{
+			return;
+		}
+
+		// A sword swings from the hand, so a strike takes it from the hip first, before the server has said the fight began.
+		const bool sword = (action == EAction::Strike) && wieldsSword(body);
+		if (sword)
+		{
+			holdWeapon(body, true);
+		}
+
+		TConstArrayView<const TCHAR* const> clips = (action == EAction::Fall) ? TConstArrayView<const TCHAR* const>(fallClips) : (action == EAction::Hit) ? TConstArrayView<const TCHAR* const>(hitClips) : sword ? TConstArrayView<const TCHAR* const>(swordClips) : TConstArrayView<const TCHAR* const>(punchClips);
+		UAnimSequenceBase* clip = LoadObject<UAnimSequenceBase>(nullptr, clips[FMath::Abs(variant) % clips.Num()]);
+		if (clip == nullptr)
+		{
+			return;
+		}
+
+		// Started from the top even when the same clip played last, as two blows in a row are two swings.
+		player->SetAnimationAsset(clip, false);
+		player->SetPosition(0.0f);
+		player->SetPlaying(true);
+		player->SetPlayRate(1.0f);
+
+		// A strike or a flinch keeps its feet on the ground. A fall lies as its clip lies: planting the feet of a body on its back lowers the pelvis to them and drags it under.
+		player->grounded = (action != EAction::Fall);
+		player->plantFeet = false;
+		player->fallen = (action == EAction::Fall);
+		player->actionEndSeconds = now + clip->GetPlayLength();
+
+		TInlineComponentArray<USkeletalMeshComponent*> garments;
+		body.GetComponents(garments);
+		for (USkeletalMeshComponent* garment : garments)
+		{
+			if (garment->ComponentHasTag(starterGarmentTag))
+			{
+				garment->ForceClothNextUpdateTeleportAndReset();
+			}
+		}
+	}
+
+	void standUp(AActor& body)
+	{
+		USkeletalMeshComponent* mesh = findMesh(body, TEXT("Body"));
+		UFootIkAnimInstance* player = (mesh != nullptr) ? footIkOf(*mesh) : nullptr;
+		if (player != nullptr)
+		{
+			player->fallen = false;
+			player->actionEndSeconds = 0.0;
+		}
+	}
+
+	void holdWeapon(AActor& body, bool ready)
+	{
+		USkeletalMeshComponent* mesh = findMesh(body, TEXT("Body"));
+		USkeletalMesh* actualBody = (mesh != nullptr) ? mesh->GetSkeletalMeshAsset() : nullptr;
+		UStaticMeshComponent* weapon = FindObjectFast<UStaticMeshComponent>(&body, FName(appearanceWeaponName));
+		FName bone;
+		FTransform relative;
+		if ((actualBody == nullptr) || (weapon == nullptr) || !weaponPlacement(*mesh, *actualBody, ready, bone, relative))
+		{
+			return;
+		}
+
+		if (ready)
+		{
+			weapon->ComponentTags.AddUnique(appearanceWeaponReadyTag);
+		}
+		else
+		{
+			weapon->ComponentTags.Remove(appearanceWeaponReadyTag);
+		}
+
+		weapon->AttachToComponent(mesh, FAttachmentTransformRules::KeepRelativeTransform, bone);
+		weapon->SetRelativeTransform(relative);
+		weapon->SetWorldScale3D(FVector(heightScale(body)));
+	}
+
+	void armWithSword(AActor& body)
+	{
+		USkeletalMeshComponent* mesh = findMesh(body, TEXT("Body"));
+		const USkeletalMesh* actualBody = (mesh != nullptr) ? mesh->GetSkeletalMeshAsset() : nullptr;
+		if (actualBody != nullptr)
+		{
+			appearanceStandSword(body, *mesh, *actualBody, true);
+		}
+	}
+
+	bool wieldsSword(AActor& body)
+	{
+		const UStaticMeshComponent* weapon = FindObjectFast<UStaticMeshComponent>(&body, FName(appearanceWeaponName));
+		return (weapon != nullptr) && weapon->IsVisible();
 	}
 
 	float heightScale(AActor& body)

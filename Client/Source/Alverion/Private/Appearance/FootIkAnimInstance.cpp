@@ -16,6 +16,12 @@ namespace
 	// The share of the step between the two feet's ground the pelvis sinks below the lower foot, so neither leg stands locked straight on a slope.
 	constexpr float footIkSoftKnees = 0.3f;
 
+	/**
+	 * How high the pelvis of a body lying on its back sits above the ground: the depth of the hips and back behind it, measured as 10.5 cm on the goblin.
+	 * The fall clip lies a hand's breadth lower than that, which buried the body, so the pelvis is held up to this while fallen.
+	 */
+	constexpr double footIkFallenPelvisCm = 11.0;
+
 	/** Invalid when the skeleton lacks the bone or the current level of detail drops it. */
 	FCompactPoseBoneIndex footIkBone(const FBoneContainer& bones, const FName& name)
 	{
@@ -56,7 +62,7 @@ bool FFootIkAnimInstanceProxy::Evaluate(FPoseContext& output)
 	static const FName legNames[2][4] = { { TEXT("thigh_l"), TEXT("calf_l"), TEXT("foot_l"), TEXT("ball_l") }, { TEXT("thigh_r"), TEXT("calf_r"), TEXT("foot_r"), TEXT("ball_r") } };
 	const FBoneContainer& bones = output.Pose.GetBoneContainer();
 	const FCompactPoseBoneIndex pelvis = footIkBone(bones, pelvisName);
-	if ((!plantFeet && level && FMath::IsNearlyZero(lift)) || !pelvis.IsValid())
+	if ((!plantFeet && !fallen && level && FMath::IsNearlyZero(lift)) || !pelvis.IsValid())
 	{
 		return true;
 	}
@@ -106,8 +112,11 @@ bool FFootIkAnimInstanceProxy::Evaluate(FPoseContext& output)
 		}
 	}
 
+	// A fallen body is held up only as far as it would sink, so the fall itself plays as sampled until the body reaches the ground.
 	FTransform pelvisTransform = pose.GetComponentSpaceTransform(pelvis);
-	pelvisTransform.AddToTranslation(FVector(0.0, 0.0, pelvisDrop + lift));
+	const double pelvisHeight = pelvisTransform.GetLocation().Z + pelvisDrop + lift;
+	const double fallenRaise = fallen ? FMath::Max(0.0, footIkFallenPelvisCm - pelvisHeight) : 0.0;
+	pelvisTransform.AddToTranslation(FVector(0.0, 0.0, pelvisDrop + lift + fallenRaise));
 	const FBoneTransform pelvisMove[] = { FBoneTransform(pelvis, pelvisTransform) };
 	pose.SafeSetCSBoneTransforms(pelvisMove);
 
@@ -150,6 +159,7 @@ void UFootIkAnimInstance::NativeUpdateAnimation(float deltaSeconds)
 	FFootIkAnimInstanceProxy& shaping = GetProxyOnGameThread<FFootIkAnimInstanceProxy>();
 	shaping.lift = lift;
 	shaping.headScale = 1.0f;
+	shaping.fallen = fallen;
 
 	const USkeletalMeshComponent* mesh = GetSkelMeshComponent();
 	const UWorld* world = GetWorld();
@@ -251,7 +261,7 @@ void UFootIkAnimInstance::NativeUpdateAnimation(float deltaSeconds)
 		proxy.groundPoints[side] = FVector::ZeroVector;
 		const FVector foot = mesh->GetSocketLocation(footNames[side]);
 		FHitResult hit;
-		if ((grounded || plantFeet) && world->LineTraceSingleByChannel(hit, FVector(foot.X, foot.Y, frame.GetLocation().Z + footIkReachCm), FVector(foot.X, foot.Y, frame.GetLocation().Z - footIkReachCm), ECC_WorldStatic, query))
+		if ((grounded || plantFeet) && world->LineTraceSingleByObjectType(hit, FVector(foot.X, foot.Y, frame.GetLocation().Z + footIkReachCm), FVector(foot.X, foot.Y, frame.GetLocation().Z - footIkReachCm), FCollisionObjectQueryParams(ECC_WorldStatic), query))
 		{
 			if (plantFeet)
 			{

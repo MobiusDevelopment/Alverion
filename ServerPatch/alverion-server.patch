@@ -1,0 +1,719 @@
+diff --git dist/db_installer/sql/game/character_appearance.sql dist/db_installer/sql/game/character_appearance.sql
+new file mode 100644
+index 0000000..16d29c4
+--- /dev/null
++++ dist/db_installer/sql/game/character_appearance.sql
+@@ -0,0 +1,6 @@
++-- Alverion appearance extension: each character's appearance block, as the Alverion client sent it at creation.
++CREATE TABLE IF NOT EXISTS `character_appearance` (
++  `charId` INT UNSIGNED NOT NULL DEFAULT 0,
++  `data` VARBINARY(64) NOT NULL,
++  PRIMARY KEY (`charId`)
++) DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+diff --git dist/game/config/Player.ini dist/game/config/Player.ini
+--- dist/game/config/Player.ini
++++ dist/game/config/Player.ini
+@@ -54,3 +54,3 @@
+ # Default: False
+-DisableCp = False
++DisableCp = True
+ 
+diff --git dist/game/data/stats/items/30000-30099.xml dist/game/data/stats/items/30000-30099.xml
+new file mode 100644
+index 0000000..651163d
+--- /dev/null
++++ dist/game/data/stats/items/30000-30099.xml
+@@ -0,0 +1,105 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/items.xsd">
++	<!-- Alverion items, from 30000 up: past every stock id and below the custom wyvern at 50000, as item ids top out at 65535. The Alverion client names, describes and dresses them by id. -->
++	<item id="30001" type="Armor" name="Villager Shirt">
++		<set name="armor_type" val="LIGHT" />
++		<set name="bodypart" val="chest" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="3301" />
++		<stats>
++			<stat type="pDef">33</stat>
++		</stats>
++	</item>
++	<item id="30002" type="Armor" name="Villager Pants">
++		<set name="armor_type" val="LIGHT" />
++		<set name="bodypart" val="legs" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="1750" />
++		<stats>
++			<stat type="pDef">20</stat>
++		</stats>
++	</item>
++	<item id="30003" type="Armor" name="Villager Gloves">
++		<set name="bodypart" val="gloves" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="660" />
++		<stats>
++			<stat type="pDef">9</stat>
++		</stats>
++	</item>
++	<item id="30004" type="Armor" name="Villager Sandals">
++		<set name="bodypart" val="feet" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="LEATHER" />
++		<set name="price" val="20" />
++		<set name="weight" val="1320" />
++		<stats>
++			<stat type="pDef">13</stat>
++		</stats>
++	</item>
++	<item id="30005" type="Armor" name="Villager Hat">
++		<set name="bodypart" val="head" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="CLOTH" />
++		<set name="price" val="20" />
++		<set name="weight" val="660" />
++		<stats>
++			<stat type="pDef">13</stat>
++		</stats>
++	</item>
++	<item id="30006" type="Weapon" name="Wooden Sword">
++		<set name="bodypart" val="rhand" />
++		<set name="damage_range" val="0;0;40;120" />
++		<set name="default_action" val="EQUIP" />
++		<set name="immediate_effect" val="true" />
++		<set name="is_tradable" val="false" />
++		<set name="is_dropable" val="false" />
++		<set name="is_sellable" val="false" />
++		<set name="is_depositable" val="false" />
++		<set name="material" val="WOOD" />
++		<set name="price" val="106" />
++		<set name="soulshots" val="1" />
++		<set name="spiritshots" val="1" />
++		<set name="weapon_type" val="SWORD" />
++		<set name="weight" val="1600" />
++		<stats>
++			<stat type="critRate">8</stat>
++			<stat type="mAtk">5</stat>
++			<stat type="pAtk">6</stat>
++			<stat type="pAtkRange">40</stat>
++			<stat type="pAtkSpd">379</stat>
++			<stat type="randomDamage">10</stat>
++		</stats>
++	</item>
++</list>
+diff --git dist/game/data/stats/players/initialEquipment.xml dist/game/data/stats/players/initialEquipment.xml
+--- dist/game/data/stats/players/initialEquipment.xml
++++ dist/game/data/stats/players/initialEquipment.xml
+@@ -109,2 +109,11 @@
+ 	</equipment>
++	<!-- Alverion: the human fighter again, the class every Alverion character is made as. Being the later of the two, it replaces the one above, so a new character starts with Alverion's items alone. -->
++	<equipment classId="0">
++		<item id="30006" count="1" equipped="true" /> <!-- Wooden Sword -->
++		<item id="30001" count="1" equipped="true" /> <!-- Villager Shirt -->
++		<item id="30002" count="1" equipped="true" /> <!-- Villager Pants -->
++		<item id="30003" count="1" equipped="true" /> <!-- Villager Gloves -->
++		<item id="30004" count="1" equipped="true" /> <!-- Villager Sandals -->
++		<item id="30005" count="1" equipped="true" /> <!-- Villager Hat -->
++	</equipment>
+ </list>
+\ No newline at end of file
+diff --git dist/game/data/stats/players/initialShortcuts.xml dist/game/data/stats/players/initialShortcuts.xml
+--- dist/game/data/stats/players/initialShortcuts.xml
++++ dist/game/data/stats/players/initialShortcuts.xml
+@@ -1,18 +1,5 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/initialShortcuts.xsd">
+-	<!-- Global shortcuts -->
+-	<shortcuts>
+-		<page pageId="0">
+-			<slot slotId="0" shortcutType="ACTION" shortcutId="2" /> <!-- Attack -->
+-			<slot slotId="3" shortcutType="ACTION" shortcutId="5" /> <!-- Pick Up -->
+-			<slot slotId="10" shortcutType="ACTION" shortcutId="0" /> <!-- Sit/Stand -->
+-			<slot slotId="11" shortcutType="ITEM" shortcutId="5588" /> <!-- Tutorial Guide -->
+-		</page>
+-		<!-- Custom example. -->
+-		<page pageId="1">
+-			<slot slotId="0" shortcutType="MACRO" shortcutId="10000" /> <!-- Macro Test -->
+-		</page>
+-	</shortcuts>
+ 	<!-- Human Mystic -->
+ 	<shortcuts classId="10">
+ 		<page pageId="0">
+diff --git java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java
+new file mode 100644
+index 0000000..f87be59
+--- /dev/null
++++ java/org/l2jmobius/gameserver/data/sql/CharacterAppearanceTable.java
+@@ -0,0 +1,171 @@
++/*
++ * Copyright (c) 2013 L2jMobius
++ * 
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ * 
++ * The above copyright notice and this permission notice shall be
++ * included in all copies or substantial portions of the Software.
++ * 
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
++ * IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ */
++package org.l2jmobius.gameserver.data.sql;
++
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.util.List;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.logging.Level;
++import java.util.logging.Logger;
++
++import org.l2jmobius.commons.database.DatabaseFactory;
++import org.l2jmobius.commons.network.buffer.WriteBuffer;
++
++/**
++ * Alverion appearance extension.<br>
++ * Keeps each character's appearance block exactly as the Alverion client sent it at creation, and writes it back to that client.<br>
++ * The server never reads the bytes; only the client gives them meaning.<br>
++ * On the wire the block follows a magic number, so a client that never sends one and a server without this patch both carry on as before.
++ * @author Mobius
++ */
++public class CharacterAppearanceTable
++{
++	private static final Logger LOGGER = Logger.getLogger(CharacterAppearanceTable.class.getName());
++	
++	/** The bytes 'A' 'L' 'V' '1', read as a little-endian int. */
++	public static final int MAGIC = 0x31564C41;
++	
++	/** The longest block accepted. The client sends 24 bytes today. */
++	public static final int MAX_SIZE = 64;
++	
++	private static final byte[] NONE = new byte[0];
++	
++	private final Map<Integer, byte[]> _appearances = new ConcurrentHashMap<>();
++	
++	protected CharacterAppearanceTable()
++	{
++	}
++	
++	/**
++	 * @param objectId the character's object id
++	 * @return the stored block, or an empty array for a character created without one
++	 */
++	public byte[] get(int objectId)
++	{
++		return _appearances.computeIfAbsent(objectId, this::load);
++	}
++	
++	public void store(int objectId, byte[] appearance)
++	{
++		if ((appearance == null) || (appearance.length == 0) || (appearance.length > MAX_SIZE))
++		{
++			return;
++		}
++		
++		try (Connection con = DatabaseFactory.getConnection();
++			PreparedStatement ps = con.prepareStatement("REPLACE INTO character_appearance (charId, data) VALUES (?, ?)"))
++		{
++			ps.setInt(1, objectId);
++			ps.setBytes(2, appearance);
++			ps.execute();
++			_appearances.put(objectId, appearance);
++		}
++		catch (Exception e)
++		{
++			LOGGER.log(Level.WARNING, getClass().getSimpleName() + ": Could not store the appearance of " + objectId + ".", e);
++		}
++	}
++	
++	public void delete(int objectId)
++	{
++		_appearances.remove(objectId);
++		
++		try (Connection con = DatabaseFactory.getConnection();
++			PreparedStatement ps = con.prepareStatement("DELETE FROM character_appearance WHERE charId=?"))
++		{
++			ps.setInt(1, objectId);
++			ps.execute();
++		}
++		catch (Exception e)
++		{
++			LOGGER.log(Level.WARNING, getClass().getSimpleName() + ": Could not delete the appearance of " + objectId + ".", e);
++		}
++	}
++	
++	private byte[] load(int objectId)
++	{
++		try (Connection con = DatabaseFactory.getConnection();
++			PreparedStatement ps = con.prepareStatement("SELECT data FROM character_appearance WHERE charId=?"))
++		{
++			ps.setInt(1, objectId);
++			try (ResultSet rs = ps.executeQuery())
++			{
++				if (rs.next())
++				{
++					final byte[] data = rs.getBytes(1);
++					return data != null ? data : NONE;
++				}
++			}
++		}
++		catch (Exception e)
++		{
++			LOGGER.log(Level.WARNING, getClass().getSimpleName() + ": Could not load the appearance of " + objectId + ".", e);
++		}
++		
++		return NONE;
++	}
++	
++	/**
++	 * Appends the blocks to the end of a packet: every block padded to the longest, then that size and the count as shorts, then the magic.<br>
++	 * The client reads it from the end, so nothing before it changes. Writes nothing when no block exists, leaving the packet exactly as stock.
++	 * @param buffer the packet being written
++	 * @param blocks one block per entry the packet lists, in order, empty for an entry without one
++	 */
++	public static void writeTrailer(WriteBuffer buffer, List<byte[]> blocks)
++	{
++		int size = 0;
++		for (byte[] block : blocks)
++		{
++			size = Math.max(size, block.length);
++		}
++		
++		if (size == 0)
++		{
++			return;
++		}
++		
++		for (byte[] block : blocks)
++		{
++			buffer.writeBytes(block);
++			for (int i = block.length; i < size; i++)
++			{
++				buffer.writeByte(0);
++			}
++		}
++		
++		buffer.writeShort(size);
++		buffer.writeShort(blocks.size());
++		buffer.writeInt(MAGIC);
++	}
++	
++	public static CharacterAppearanceTable getInstance()
++	{
++		return SingletonHolder.INSTANCE;
++	}
++	
++	private static class SingletonHolder
++	{
++		protected static final CharacterAppearanceTable INSTANCE = new CharacterAppearanceTable();
++	}
++}
+diff --git java/org/l2jmobius/gameserver/entity/actor/Attackable.java java/org/l2jmobius/gameserver/entity/actor/Attackable.java
+--- java/org/l2jmobius/gameserver/entity/actor/Attackable.java
++++ java/org/l2jmobius/gameserver/entity/actor/Attackable.java
+@@ -106,4 +106,15 @@ public class Attackable extends Npc
+ 	private final AtomicReference<Collection<ItemHolder>> _sweepItems = new AtomicReference<>();
+ 	
++	// Alverion: what the corpse holds for anyone to loot, filled as it dies instead of dropped on the ground.
++	private final List<ItemHolder> _corpseLoot = new ArrayList<>();
++	
++	/**
++	 * @return what this corpse holds for anyone to loot: the drops it rolled as it died, kept on it instead of dropped on the ground. Hold its lock to read or change it.
++	 */
++	public List<ItemHolder> getCorpseLoot()
++	{
++		return _corpseLoot;
++	}
++	
+ 	// Over-hit
+ 	private boolean _overhit;
+@@ -1117,4 +1128,10 @@ public class Attackable extends Npc
+ 	public void doItemDrop(NpcTemplate npcTemplate, Creature mainDamageDealer)
+ 	{
++		// Alverion: a creature is the same object each time it respawns, so last death's loot goes first.
++		synchronized (_corpseLoot)
++		{
++			_corpseLoot.clear();
++		}
++		
+ 		if (mainDamageDealer == null)
+ 		{
+@@ -1188,5 +1205,9 @@ public class Attackable extends Npc
+ 				else
+ 				{
+-					dropItem(player, drop); // Drop the item on the ground.
++					// Alverion: kept on the corpse for anyone to loot, instead of dropped on the ground.
++					synchronized (_corpseLoot)
++					{
++						_corpseLoot.add(drop);
++					}
+ 				}
+ 				
+diff --git java/org/l2jmobius/gameserver/entity/actor/templates/NpcTemplate.java java/org/l2jmobius/gameserver/entity/actor/templates/NpcTemplate.java
+--- java/org/l2jmobius/gameserver/entity/actor/templates/NpcTemplate.java
++++ java/org/l2jmobius/gameserver/entity/actor/templates/NpcTemplate.java
+@@ -179,5 +179,6 @@ public class NpcTemplate extends CreatureTemplate
+ 		_hasSummoner = set.getBoolean("hasSummoner", false);
+ 		_canBeSown = set.getBoolean("canBeSown", false);
+-		_corpseTime = set.getInt("corpseTime", NpcConfig.DEFAULT_CORPSE_TIME);
++		// Alverion: corpses stay to be looted, a minute for any creature and five for a raid or grand boss.
++		_corpseTime = (isType("RaidBoss") || isType("GrandBoss")) ? 300 : 60;
+ 		_aiType = set.getEnum("aiType", AIType.class, AIType.FIGHTER);
+ 		
+diff --git java/org/l2jmobius/gameserver/network/ExClientPackets.java java/org/l2jmobius/gameserver/network/ExClientPackets.java
+--- java/org/l2jmobius/gameserver/network/ExClientPackets.java
++++ java/org/l2jmobius/gameserver/network/ExClientPackets.java
+@@ -179,4 +179,5 @@ public enum ExClientPackets
+ 	REQUEST_USE_GOODS_INVENTORY_ITEM(0x92, null, ConnectionState.IN_GAME),
+ 	REQUEST_HARDWARE_INFO(0x96, RequestHardWareInfo::new, ConnectionState.values()),
++	REQUEST_CORPSE_LOOT(0x98, RequestCorpseLoot::new, ConnectionState.IN_GAME), // Alverion: corpse looting, past the last stock id.
+ 	EX_MAX(0x97, null, ConnectionState.IN_GAME);
+ 	
+diff --git java/org/l2jmobius/gameserver/network/GameClient.java java/org/l2jmobius/gameserver/network/GameClient.java
+--- java/org/l2jmobius/gameserver/network/GameClient.java
++++ java/org/l2jmobius/gameserver/network/GameClient.java
+@@ -39,1 +39,2 @@ import org.l2jmobius.gameserver.config.ServerConfig;
++import org.l2jmobius.gameserver.data.sql.CharacterAppearanceTable;
+ import org.l2jmobius.gameserver.data.sql.ClanTable;
+@@ -342,7 +343,9 @@
+ 	public static void deleteCharByObjId(int objectId)
+ 	{
+ 		if (objectId < 0)
+ 		{
+ 			return;
+ 		}
++		
++		CharacterAppearanceTable.getInstance().delete(objectId);
+ 		
+diff --git java/org/l2jmobius/gameserver/network/clientpackets/CharacterCreate.java java/org/l2jmobius/gameserver/network/clientpackets/CharacterCreate.java
+--- java/org/l2jmobius/gameserver/network/clientpackets/CharacterCreate.java
++++ java/org/l2jmobius/gameserver/network/clientpackets/CharacterCreate.java
+@@ -34,2 +34,3 @@ import org.l2jmobius.gameserver.config.custom.StartingLocationConfig;
++import org.l2jmobius.gameserver.data.sql.CharacterAppearanceTable;
+ import org.l2jmobius.gameserver.data.xml.FakePlayerData;
+ import org.l2jmobius.gameserver.data.xml.InitialEquipmentData;
+@@ -74,4 +75,5 @@ public class CharacterCreate extends ClientPacket
+ 	private byte _hairColor;
+ 	private byte _face;
++	private byte[] _appearance;
+ 	
+ 	@Override
+@@ -91,4 +93,14 @@ public class CharacterCreate extends ClientPacket
+ 		_hairColor = (byte) readInt();
+ 		_face = (byte) readInt();
++		
++		// Alverion appearance extension: the client's appearance block, after its magic number.
++		if ((remaining() >= 5) && (readInt() == CharacterAppearanceTable.MAGIC))
++		{
++			final int size = readUnsignedByte();
++			if ((size > 0) && (size <= CharacterAppearanceTable.MAX_SIZE) && (remaining() >= size))
++			{
++				_appearance = readBytes(size);
++			}
++		}
+ 	}
+ 	
+@@ -246,4 +258,5 @@ public class CharacterCreate extends ClientPacket
+ 		
+ 		initNewChar(client, newChar);
++		CharacterAppearanceTable.getInstance().store(newChar.getObjectId(), _appearance);
+ 		client.sendPacket(CharCreateOk.STATIC_PACKET);
+ 		
+diff --git java/org/l2jmobius/gameserver/network/clientpackets/RequestCorpseLoot.java java/org/l2jmobius/gameserver/network/clientpackets/RequestCorpseLoot.java
+new file mode 100644
+index 0000000..b4d47e9
+--- /dev/null
++++ java/org/l2jmobius/gameserver/network/clientpackets/RequestCorpseLoot.java
+@@ -0,0 +1,141 @@
++/*
++ * Copyright (c) 2013 L2jMobius
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be
++ * included in all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
++ * IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ */
++package org.l2jmobius.gameserver.network.clientpackets;
++
++import java.util.Collections;
++import java.util.List;
++
++import org.l2jmobius.gameserver.entity.World;
++import org.l2jmobius.gameserver.entity.WorldObject;
++import org.l2jmobius.gameserver.entity.actor.Attackable;
++import org.l2jmobius.gameserver.entity.actor.Player;
++import org.l2jmobius.gameserver.entity.item.enums.ItemProcessType;
++import org.l2jmobius.gameserver.entity.item.holders.ItemHolder;
++import org.l2jmobius.gameserver.entity.itemcontainer.Inventory;
++import org.l2jmobius.gameserver.network.SystemMessageId;
++import org.l2jmobius.gameserver.network.serverpackets.ExCorpseLoot;
++
++/**
++ * Corpse looting for the Alverion client: looks at what a corpse holds, or takes one stack of it or all of it. Anyone standing next to the corpse may loot it.<br>
++ * Every answer is the corpse's loot list as it stands, and an empty list closes the client's loot window.
++ * @author Mobius
++ */
++public class RequestCorpseLoot extends ClientPacket
++{
++	private static final int ACTION_TAKE = 1;
++	private static final int ACTION_TAKE_ALL = 2;
++
++	/** How near a player has to stand to a corpse to loot it, in game units. */
++	private static final int LOOT_RANGE = 150;
++
++	private int _action;
++	private int _corpseId;
++	private int _index;
++	private int _itemId;
++
++	@Override
++	protected void readImpl()
++	{
++		_action = readUnsignedByte();
++		_corpseId = readInt();
++		_index = readInt();
++		_itemId = readInt();
++	}
++
++	@Override
++	protected void runImpl()
++	{
++		final Player player = getPlayer();
++		if (player == null)
++		{
++			return;
++		}
++
++		final WorldObject object = World.findObject(_corpseId);
++		if ((object == null) || !object.isAttackable() || !object.asAttackable().isDead() || !player.isInsideRadius3D(object, LOOT_RANGE))
++		{
++			player.sendPacket(new ExCorpseLoot(_corpseId, Collections.emptyList()));
++			return;
++		}
++
++		final Attackable corpse = object.asAttackable();
++		final List<ItemHolder> loot = corpse.getCorpseLoot();
++		final ExCorpseLoot answer;
++		synchronized (loot)
++		{
++			if (_action == ACTION_TAKE_ALL)
++			{
++				int index = 0;
++				while (index < loot.size())
++				{
++					if (give(player, corpse, loot.get(index)))
++					{
++						loot.remove(index);
++					}
++					else
++					{
++						index++;
++					}
++				}
++			}
++			else if ((_action == ACTION_TAKE) && (_index >= 0) && (_index < loot.size()))
++			{
++				// The item id guards against a list another looter changed since this player last saw it.
++				final ItemHolder item = loot.get(_index);
++				if ((item.getId() == _itemId) && give(player, corpse, item))
++				{
++					loot.remove(_index);
++				}
++			}
++
++			answer = new ExCorpseLoot(_corpseId, loot);
++		}
++
++		player.sendPacket(answer);
++	}
++
++	/**
++	 * Gives one stack to the player, unless their bag has no room for it.
++	 * @param player the player looting
++	 * @param corpse the corpse the stack comes from
++	 * @param item the stack
++	 * @return whether the stack went into the player's bag
++	 */
++	private static boolean give(Player player, Attackable corpse, ItemHolder item)
++	{
++		final int itemId = item.getId();
++		final long count = item.getCount();
++		if (itemId == Inventory.ADENA_ID)
++		{
++			player.addAdena(ItemProcessType.LOOT, count, corpse, true);
++			return true;
++		}
++
++		if (!player.getInventory().validateCapacityByItemId(itemId))
++		{
++			player.sendPacket(SystemMessageId.YOUR_INVENTORY_IS_FULL);
++			return false;
++		}
++
++		player.addItem(ItemProcessType.LOOT, itemId, count, corpse, true);
++		return true;
++	}
++}
+diff --git java/org/l2jmobius/gameserver/network/serverpackets/CharInfo.java java/org/l2jmobius/gameserver/network/serverpackets/CharInfo.java
+--- java/org/l2jmobius/gameserver/network/serverpackets/CharInfo.java
++++ java/org/l2jmobius/gameserver/network/serverpackets/CharInfo.java
+@@ -21,8 +21,10 @@
+ package org.l2jmobius.gameserver.network.serverpackets;
+ 
++import java.util.List;
+ import java.util.Map;
+ 
+ import org.l2jmobius.commons.network.buffer.WriteBuffer;
+ import org.l2jmobius.gameserver.config.GeneralConfig;
++import org.l2jmobius.gameserver.data.sql.CharacterAppearanceTable;
+ import org.l2jmobius.gameserver.entity.actor.Player;
+ import org.l2jmobius.gameserver.entity.actor.appearance.PlayerAppearance;
+@@ -238,4 +240,7 @@ public class CharInfo extends ServerPacket
+ 		// T2.3
+ 		buffer.writeInt(_player.getAbnormalVisualEffectSpecial());
++		
++		// Alverion appearance extension.
++		CharacterAppearanceTable.writeTrailer(buffer, List.of(CharacterAppearanceTable.getInstance().get(_objId)));
+ 	}
+ 	
+diff --git java/org/l2jmobius/gameserver/network/serverpackets/CharSelectionInfo.java java/org/l2jmobius/gameserver/network/serverpackets/CharSelectionInfo.java
+--- java/org/l2jmobius/gameserver/network/serverpackets/CharSelectionInfo.java
++++ java/org/l2jmobius/gameserver/network/serverpackets/CharSelectionInfo.java
+@@ -33,4 +33,5 @@ import org.l2jmobius.gameserver.config.custom.MultilingualSupportConfig;
+ import org.l2jmobius.gameserver.config.custom.OfflinePlayConfig;
+ import org.l2jmobius.gameserver.config.custom.OfflineTradeConfig;
++import org.l2jmobius.gameserver.data.sql.CharacterAppearanceTable;
+ import org.l2jmobius.gameserver.data.sql.ClanTable;
+ import org.l2jmobius.gameserver.data.xml.ExperienceData;
+@@ -175,4 +176,13 @@ public class CharSelectionInfo extends ServerPacket
+ 			buffer.writeInt(charInfoPackage.getVitalityPoints()); // Vitality
+ 		}
++		
++		// Alverion appearance extension.
++		final List<byte[]> appearances = new ArrayList<>(size);
++		for (CharacterInfoHolder charInfoPackage : _characterPackages)
++		{
++			appearances.add(CharacterAppearanceTable.getInstance().get(charInfoPackage.getObjectId()));
++		}
++		
++		CharacterAppearanceTable.writeTrailer(buffer, appearances);
+ 	}
+ 	
+diff --git java/org/l2jmobius/gameserver/network/serverpackets/ExCorpseLoot.java java/org/l2jmobius/gameserver/network/serverpackets/ExCorpseLoot.java
+new file mode 100644
+index 0000000..ceb51eb
+--- /dev/null
++++ java/org/l2jmobius/gameserver/network/serverpackets/ExCorpseLoot.java
+@@ -0,0 +1,64 @@
++/*
++ * Copyright (c) 2013 L2jMobius
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be
++ * included in all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
++ * IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ */
++package org.l2jmobius.gameserver.network.serverpackets;
++
++import java.util.List;
++
++import org.l2jmobius.commons.network.buffer.WriteBuffer;
++import org.l2jmobius.gameserver.entity.item.holders.ItemHolder;
++import org.l2jmobius.gameserver.network.GameClient;
++
++/**
++ * A corpse's loot for the Alverion client: the corpse's object id, how many stacks, then each stack's item id and count. No stacks says there is nothing left to take.
++ * @author Mobius
++ */
++public class ExCorpseLoot extends ServerPacket
++{
++	/** The extended packet id, one the stock client never uses. */
++	private static final int EX_ID = 0x7A01;
++
++	private final int _corpseId;
++	private final List<ItemHolder> _items;
++
++	/**
++	 * @param corpseId the corpse's object id
++	 * @param items what the corpse holds, copied here so the caller may change its list afterwards
++	 */
++	public ExCorpseLoot(int corpseId, List<ItemHolder> items)
++	{
++		_corpseId = corpseId;
++		_items = List.copyOf(items);
++	}
++
++	@Override
++	protected void writeImpl(GameClient client, WriteBuffer buffer)
++	{
++		buffer.writeByte(0xFE);
++		buffer.writeShort(EX_ID);
++		buffer.writeInt(_corpseId);
++		buffer.writeInt(_items.size());
++		for (ItemHolder item : _items)
++		{
++			buffer.writeInt(item.getId());
++			buffer.writeLong(item.getCount());
++		}
++	}
++}

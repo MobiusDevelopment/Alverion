@@ -47,6 +47,7 @@ bool FWorldFlow::begin(FGameServerFlow& gameServer)
 	_sinceMoveSent = 0.0f;
 	_sinceValidateSent = 0.0f;
 	_targetObjectId = 0;
+	_health.Reset();
 	_talkObjectId = 0;
 	_talkSelected = false;
 	_talkSeconds = 0.0f;
@@ -207,6 +208,58 @@ bool FWorldFlow::say(const FString& text, EChatChannel channel)
 	return true;
 }
 
+bool FWorldFlow::attack(uint32 objectId)
+{
+	// The server attacks on the second click at a monster exactly as it talks on the second click at a townsperson.
+	return talkTo(objectId);
+}
+
+bool FWorldFlow::returnToVillage()
+{
+	if (!canSend())
+	{
+		return false;
+	}
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestRestartPoint(buffer, GameServer::restartPointVillage);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
+bool FWorldFlow::openLoot(uint32 corpseId)
+{
+	return sendLoot(GameServer::ELootAction::Look, corpseId, 0, 0);
+}
+
+bool FWorldFlow::takeLoot(uint32 corpseId, int32 index, int32 itemId)
+{
+	return sendLoot(GameServer::ELootAction::Take, corpseId, index, itemId);
+}
+
+bool FWorldFlow::takeAllLoot(uint32 corpseId)
+{
+	return sendLoot(GameServer::ELootAction::TakeAll, corpseId, 0, 0);
+}
+
+uint32 FWorldFlow::targetObjectId() const
+{
+	return _targetObjectId;
+}
+
+bool FWorldFlow::healthOf(uint32 objectId, int32& current, int32& maximum) const
+{
+	const TPair<int32, int32>* health = _health.Find(objectId);
+	if ((health == nullptr) || (health->Value <= 0))
+	{
+		return false;
+	}
+
+	current = health->Key;
+	maximum = health->Value;
+	return true;
+}
+
 bool FWorldFlow::talkTo(uint32 objectId)
 {
 	if ((_gameServer == nullptr) || (_gameServer->session() == nullptr) || (_gameServer->step() != EGameServerStep::InWorld) || (objectId == 0))
@@ -363,6 +416,19 @@ void FWorldFlow::sendAction(uint32 objectId)
 	_sinceActionSent = 0.0f;
 }
 
+bool FWorldFlow::sendLoot(GameServer::ELootAction action, uint32 corpseId, int32 index, int32 itemId)
+{
+	if (!canSend() || (corpseId == 0))
+	{
+		return false;
+	}
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestCorpseLoot(buffer, action, corpseId, index, itemId);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
 void FWorldFlow::handlePacket(uint32 opcode, TArrayView<const uint8> body)
 {
 	FReadBuffer buffer(body);
@@ -431,11 +497,30 @@ void FWorldFlow::handlePacket(uint32 opcode, TArrayView<const uint8> body)
 		}
 		case GameServer::Opcode::statusUpdate:
 		{
-			// The server sends these for every creature in sight; only this client's own character has bars to keep.
+			// This client's own character keeps its bars in UserInfo, and anything else only its health, which the target frame shows.
 			FStatusUpdate update;
-			if (GameServer::readStatusUpdate(buffer, update) && (_localObjectId != 0) && (update.objectId == _localObjectId))
+			if (!GameServer::readStatusUpdate(buffer, update))
+			{
+				return;
+			}
+
+			if ((_localObjectId != 0) && (update.objectId == _localObjectId))
 			{
 				GameServer::applyStatusUpdate(update, _userInfo);
+				return;
+			}
+
+			TPair<int32, int32>& health = _health.FindOrAdd(update.objectId, TPair<int32, int32>(0, 0));
+			for (const TPair<int32, int32>& attribute : update.attributes)
+			{
+				if (attribute.Key == GameServer::StatusAttribute::currentHp)
+				{
+					health.Key = attribute.Value;
+				}
+				else if (attribute.Key == GameServer::StatusAttribute::maxHp)
+				{
+					health.Value = attribute.Value;
+				}
 			}
 
 			return;
@@ -521,7 +606,61 @@ void FWorldFlow::handlePacket(uint32 opcode, TArrayView<const uint8> body)
 			int32 objectId = 0;
 			if (buffer.readInt32(objectId))
 			{
+				_health.Remove(static_cast<uint32>(objectId));
 				onDespawned.ExecuteIfBound(static_cast<uint32>(objectId));
+			}
+
+			return;
+		}
+		case GameServer::Opcode::attack:
+		{
+			FAttack attackMessage;
+			if (GameServer::readAttack(body, attackMessage))
+			{
+				onAttack.ExecuteIfBound(attackMessage);
+			}
+
+			return;
+		}
+		case GameServer::Opcode::die:
+		case GameServer::Opcode::revive:
+		{
+			uint32 objectId = 0;
+			if (GameServer::readCombatObjectId(body, objectId))
+			{
+				onLifeChanged.ExecuteIfBound(objectId, opcode == GameServer::Opcode::revive);
+			}
+
+			return;
+		}
+		case GameServer::Opcode::autoAttackStart:
+		case GameServer::Opcode::autoAttackStop:
+		{
+			uint32 objectId = 0;
+			if (GameServer::readCombatObjectId(body, objectId))
+			{
+				onCombatStance.ExecuteIfBound(objectId, opcode == GameServer::Opcode::autoAttackStart);
+			}
+
+			return;
+		}
+		case GameServer::Opcode::corpseLoot:
+		{
+			FCorpseLoot loot;
+			if (GameServer::readCorpseLoot(body, loot))
+			{
+				onCorpseLoot.ExecuteIfBound(loot);
+			}
+
+			return;
+		}
+		case GameServer::Opcode::moveToPawn:
+		{
+			// A creature following another walks like one headed for a place, so a chasing monster runs after its target rather than jumping to it.
+			FObjectPlace destination;
+			if (GameServer::readMoveToPawn(buffer, destination) && (destination.objectId != _localObjectId))
+			{
+				onMoved.ExecuteIfBound(destination, EMoveKind::Destination);
 			}
 
 			return;

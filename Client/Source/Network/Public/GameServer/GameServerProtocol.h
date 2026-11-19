@@ -236,6 +236,37 @@ struct NETWORK_API FShortcut
 	int32 level = 0;
 };
 
+/** One blow of an Attack: whom it struck and for how much. */
+struct NETWORK_API FAttackHit
+{
+	uint32 targetId = 0;
+	int32 damage = 0;
+
+	/** The hit flags of Attack.java: GameServer::hitMissed, hitCritical and hitBlocked, and a soulshot grade. */
+	uint8 flags = 0;
+};
+
+/** An Attack: one creature striking, most often one target, several with a polearm. */
+struct NETWORK_API FAttack
+{
+	uint32 attackerId = 0;
+	TArray<FAttackHit> hits;
+};
+
+/** One stack lying on a corpse for the taking. */
+struct NETWORK_API FLootStack
+{
+	int32 itemId = 0;
+	int64 count = 0;
+};
+
+/** What a corpse holds, as the Alverion server patch lists it. No stacks says there is nothing left to take, or the corpse is gone or out of reach. */
+struct NETWORK_API FCorpseLoot
+{
+	uint32 corpseId = 0;
+	TArray<FLootStack> stacks;
+};
+
 /** One StatusUpdate: some figures of one creature that changed, each as an attribute id and its new value. */
 struct NETWORK_API FStatusUpdate
 {
@@ -310,6 +341,8 @@ inline constexpr int32 appearanceMagic = 0x31564C41;
 namespace Opcode
 {
 	// Server to client.
+	inline constexpr uint32 die = 0x00;
+	inline constexpr uint32 revive = 0x01;
 	inline constexpr uint32 deleteObject = 0x08;
 	inline constexpr uint32 characterSelectionInfo = 0x09;
 	inline constexpr uint32 loginFail = 0x0A;
@@ -325,16 +358,23 @@ namespace Opcode
 	inline constexpr uint32 inventoryUpdate = 0x21;
 	inline constexpr uint32 teleportToLocation = 0x22;
 	inline constexpr uint32 targetUnselected = 0x24;
+	inline constexpr uint32 autoAttackStart = 0x25;
+	inline constexpr uint32 autoAttackStop = 0x26;
 	inline constexpr uint32 changeMoveType = 0x28;
 	inline constexpr uint32 versionCheck = 0x2E;
 	inline constexpr uint32 moveToLocation = 0x2F;
 	inline constexpr uint32 charInfo = 0x31;
 	inline constexpr uint32 userInfo = 0x32;
+	inline constexpr uint32 attack = 0x33;
 	inline constexpr uint32 shortcutRegister = 0x44;
 	inline constexpr uint32 shortcutInit = 0x45;
 	inline constexpr uint32 stopMove = 0x47;
 	inline constexpr uint32 creatureSay = 0x4A;
 	inline constexpr uint32 restartResponse = 0x71;
+	inline constexpr uint32 moveToPawn = 0x72;
+
+	// The Alverion server patch's corpse loot list: an extended packet, so the session hands it over as 0xFE shifted up over its own id.
+	inline constexpr uint32 corpseLoot = (0xFEu << 16) | 0x7A01u;
 	inline constexpr uint32 validateLocation = 0x79;
 	inline constexpr uint32 myTargetSelected = 0xB9;
 
@@ -360,12 +400,16 @@ namespace Opcode
 	inline constexpr uint8 validatePosition = 0x59;
 	inline constexpr uint8 requestDestroyItem = 0x60;
 	inline constexpr uint8 characterRestore = 0x7B;
+	inline constexpr uint8 requestRestartPoint = 0x7D;
 
 	// Extended client packets: this byte, then a uint16 naming the packet.
 	inline constexpr uint8 extended = 0xD0;
 	inline constexpr int16 requestSaveInventoryOrder = 0x24;
 	inline constexpr int16 requestGotoLobby = 0x36;
 	inline constexpr int16 requestHardWareInfo = 0x96;
+
+	/** The Alverion server patch's own, past the last stock id. */
+	inline constexpr int16 requestCorpseLoot = 0x98;
 }
 }
 }

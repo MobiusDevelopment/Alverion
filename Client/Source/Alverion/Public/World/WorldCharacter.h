@@ -8,6 +8,7 @@
 
 class APlayerController;
 class UCameraComponent;
+class UDamageNumbersComponent;
 class UInputAction;
 class UInputMappingContext;
 class UMaterialInstanceDynamic;
@@ -51,6 +52,25 @@ private:
 	void moveRight();
 	void move(float forward, float right);
 	void rise();
+
+public:
+	/** Swings at whatever stands at the place given, turning to face it, as the server's Attack says this character does. */
+	void strike(const FVector& targetLocation);
+
+	/** Swings with nothing in reach, which the server never hears of. */
+	void strikeAir();
+
+	/** Takes a blow: flinches unless it missed, and shows the damage over the head. */
+	void takeHit(int32 damage, uint8 flags);
+
+	/** Falls, which stops the character until it gets up again. */
+	void setFallen(bool fallen);
+	bool isFallen() const;
+
+	/** Goes into a fight, which stands the body ready and takes a sword in hand, or comes out of one. */
+	void setInCombat(bool inCombat);
+
+private:
 	void toggleAutoRun();
 	void toggleRearView();
 	void toggleFirstPerson();
@@ -153,6 +173,17 @@ private:
 	bool _movedThisFrame = false;
 	bool _onGround = false;
 	bool _swimming = false;
+	bool _fallen = false;
+	bool _inCombat = false;
+
+	/** Counts the blows struck, which takes the clips of a kind in turn. */
+	int32 _strikes = 0;
+
+	/** How long the sword stays in hand after a swing outside a fight, before it goes back to the hip. */
+	float _readySeconds = 0.0f;
+
+	UPROPERTY()
+	TObjectPtr<UDamageNumbersComponent> _damageNumbers;
 
 	/** Set on wading in, while the swimmer floats up to the water line, and cleared there or once it dives. */
 	bool _surfacing = false;

@@ -31,6 +31,9 @@ namespace Appearance
 		GoblinRun,
 		Walk,
 
+		/** Standing ready in a fight. */
+		CombatIdle,
+
 		/** Moving over land at the speed given to animate, which picks the clip that suits it best: a walk, or a run. */
 		Move,
 
@@ -82,6 +85,34 @@ namespace Appearance
 
 	/** What equipped items show as on the body, by each item's visual in the item data. An item that shows nowhere, or that the data does not list, adds nothing. */
 	ALVERION_API uint8 wornPieces(TConstArrayView<int32> itemIds);
+
+	/** A one-off a body plays over whatever it is doing, then goes back to it. */
+	enum class EAction : uint8
+	{
+		/** A sword swing when the body shows the sword, a punch otherwise. */
+		Strike,
+
+		/** Flinching from a blow. It never cuts a strike short. */
+		Hit,
+
+		/** Falling, which holds its last pose until the body gets up. */
+		Fall
+	};
+
+	/** Plays a one-off on a MetaHuman's body. The variant picks among the clips of its kind, so blows in a row differ. Nothing plays over a fallen body. */
+	ALVERION_API void perform(AActor& body, EAction action, int32 variant);
+
+	/** Lets a fallen body go back to its motions. */
+	ALVERION_API void standUp(AActor& body);
+
+	/** Holds the starter sword ready in the right hand, or carries it at the hip again. A body without the sword is left as it is. */
+	ALVERION_API void holdWeapon(AActor& body, bool ready);
+
+	/** Gives a body the starter sword at the hip, for a creature the dressing never reaches, such as an authored monster that fights with one. */
+	ALVERION_API void armWithSword(AActor& body);
+
+	/** Whether the body shows the starter sword, which decides between a swing and a punch. */
+	ALVERION_API bool wieldsSword(AActor& body);
 
 	/** Applies what it can and leaves the rest: a missing groom or eye material is logged and skipped, since a bald character beats no character. */
 	ALVERION_API void apply(AActor& avatar, const Network::FAppearance& appearance, uint8 worn = wornEverything);

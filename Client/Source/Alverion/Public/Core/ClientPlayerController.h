@@ -8,7 +8,9 @@
 #include "ClientPlayerController.generated.h"
 
 class UCommonActivatableWidget;
+class UDeathMenuWidget;
 class UInputAction;
+class ULootWidget;
 class UInputMappingContext;
 class UUserWidget;
 
@@ -22,6 +24,15 @@ public:
 	virtual void SetupInputComponent() override;
 	virtual void PlayerTick(float deltaSeconds) override;
 
+	/** Shows the death menu over the world until the player respawns, which runs the function given. Once only, however often the character dies meanwhile. */
+	void showDeathMenu(TFunction<void()> onRespawn);
+
+	/** Takes the death menu away, for a character got up some other way. */
+	void closeDeathMenu();
+
+	/** Shows what a corpse holds, opening the loot window or bringing the open one up to date. Nothing left closes it. */
+	void showLoot(const Network::FCorpseLoot& loot, const FText& corpseName);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type reason) override;
@@ -29,6 +40,12 @@ protected:
 private:
 	/** The interact key talks to the townsperson the character is facing, if there is one in reach. */
 	void interact();
+
+	/**
+	 * The attack key swings at the monster in reach where the camera looks, which the server then fights until it falls or the character moves.
+	 * With nothing in reach it swings at the air, and a fallen character is asked again whether to go back to the village.
+	 */
+	void attack();
 
 	/** An action bar key uses what its slot points at. */
 	void useShortcut(int32 index);
@@ -63,6 +80,12 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UInputAction> _hideInterfaceAction;
+
+	/** The death menu while it is up. */
+	TWeakObjectPtr<UDeathMenuWidget> _deathMenu;
+
+	/** The loot window while it is up. */
+	TWeakObjectPtr<ULootWidget> _loot;
 
 	UPROPERTY()
 	TObjectPtr<UInputMappingContext> _hideInterfaceMapping;

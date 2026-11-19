@@ -44,6 +44,10 @@ namespace
 	{
 		return FName(*FString::Printf(TEXT("Shortcut%d"), index + 1));
 	}
+
+	// The attack key's rebindable name, which keys its label as keybind.Attack, and the key it starts on.
+	const TCHAR* const inputAttackMappingName = TEXT("Attack");
+	const TCHAR* const inputAttackKeyName = TEXT("LeftMouseButton");
 }
 
 void UInputBootstrapSubsystem::Initialize(FSubsystemCollectionBase& collection)
@@ -137,12 +141,18 @@ TArray<FName> UInputBootstrapSubsystem::getDefaultMappingOrder() const
 		names.AddUnique(settings->Name);
 	}
 
+	names.AddUnique(FName(inputAttackMappingName));
 	for (int32 index = 0; index < static_cast<int32>(UE_ARRAY_COUNT(inputShortcutKeyNames)); index++)
 	{
 		names.AddUnique(inputShortcutMappingName(index));
 	}
 
 	return names;
+}
+
+UInputAction* UInputBootstrapSubsystem::getAttackAction() const
+{
+	return _attackAction;
 }
 
 UInputAction* UInputBootstrapSubsystem::getShortcutAction(int32 index) const
@@ -176,6 +186,11 @@ void UInputBootstrapSubsystem::buildDefaultMappings()
 			_defaultMappingContext->MapKey(action, FKey(binding.secondaryKeyName));
 		}
 	}
+
+	UMappableInputAction* attack = NewObject<UMappableInputAction>(this, FName(inputAttackMappingName));
+	attack->makeMappable(FName(inputAttackMappingName), INVTEXT("Attack"));
+	_attackAction = attack;
+	_defaultMappingContext->MapKey(attack, FKey(inputAttackKeyName));
 
 	// The action bar's keys, made here with the rebindable names an asset would otherwise carry.
 	for (int32 index = 0; index < static_cast<int32>(UE_ARRAY_COUNT(inputShortcutKeyNames)); index++)

@@ -3,7 +3,8 @@
 The Alverion client builds MetaHuman characters, and the server keeps only a face, a hair style
 and a hair colour per character. This patch lets the server store the client's own appearance
 block, 24 bytes today, and hand it back, without changing anything a client that sends no block
-sees. It also adds Alverion's own items and starts new characters in them.
+sees. It also adds Alverion's own items, starts new characters in them and keeps a monster's drops
+on its corpse for anyone to loot.
 
 ## What it changes
 
@@ -25,10 +26,20 @@ sees. It also adds Alverion's own items and starts new characters in them.
   stock blocks differ and no edit of them fits both.
 - `initialShortcuts.xml` drops the global shortcuts, the only ones a human fighter gets, so the
   action bar starts empty.
+- A monster's drops stay on its corpse instead of falling to the ground: `Attackable` keeps them
+  in a list it fills as it dies and empties at its next death, both under the list's lock.
+  Anyone standing within 150 units may loot the corpse with `RequestCorpseLoot`, the extended
+  client packet `0xD0 0x98`, one past the last stock id: an action byte (0 look, 1 take one
+  stack, 2 take all), then the corpse's object id, the stack's place in the list and its item id
+  as ints. Each answer is `ExCorpseLoot`, the extended packet `0xFE 0x7A01`: the corpse's object
+  id, the number of stacks, then each stack's item id and count. A stack the bag has no room for
+  stays on the corpse. Auto loot, when it is on, still puts drops straight into the bag.
+- Corpses stay a minute, and a raid or grand boss's five, so there is time to loot them. Spoiled
+  or seeded corpses keep their extra time on top.
 
-Four upstream Java files change by 26 added lines in total, `Player.ini` changes one value,
-`initialEquipment.xml` gains one block, `initialShortcuts.xml` loses one, and one class, one SQL
-file and one item file are added:
+Seven upstream Java files change by 56 added lines in total, `Player.ini` changes one value,
+`initialEquipment.xml` gains one block, `initialShortcuts.xml` loses one, and three classes, one
+SQL file and one item file are added:
 
 | File | Change |
 | --- | --- |
@@ -42,6 +53,11 @@ file and one item file are added:
 | `dist/game/data/stats/players/initialEquipment.xml` | class 0 starts with Alverion's items alone |
 | `dist/game/data/stats/players/initialShortcuts.xml` | no global shortcuts |
 | `dist/game/data/stats/items/30000-30099.xml` | new: Alverion's items |
+| `java/.../entity/actor/Attackable.java` | drops kept on the corpse instead of the ground |
+| `java/.../entity/actor/templates/NpcTemplate.java` | corpses stay a minute, raid and grand bosses five |
+| `java/.../network/ExClientPackets.java` | `RequestCorpseLoot` at `0x98` |
+| `java/.../network/clientpackets/RequestCorpseLoot.java` | new: look at or take a corpse's loot |
+| `java/.../network/serverpackets/ExCorpseLoot.java` | new: the corpse's loot list |
 
 ## Hardware information
 
@@ -53,7 +69,7 @@ machine id instead of a MAC address, so one machine always sends the same value.
 ## Applying it
 
 The same patch applies to a standalone High Five server project and to the High Five folder of the
-L2J Mobius repository; `<Patch>` below is the path to `alverion-appearance.patch`. From the root
+L2J Mobius repository; `<Patch>` below is the path to `alverion-server.patch`. From the root
 of a standalone project:
 
 ```
@@ -74,14 +90,14 @@ game database (the database installer picks it up with the other game tables).
 ## Running it without applying it
 
 The patched classes can be compiled on their own and put ahead of the stock ones, which is how it
-is tested here without touching the server. Copy the four upstream files into an empty folder,
+is tested here without touching the server. Copy the seven upstream Java files into an empty folder,
 `<Folder>`, at their `java/...` paths and run `git apply -p0 --include="java/*"` on the patch
 there. The data files are read from the server's own `dist` only, so apply the rest there with
 `git apply -p0 --include="dist/*"`, or leave out `Player.ini` too if CP should stay on. Then
 compile from `<Folder>` and start the server with its classes first:
 
 ```
-javac -encoding UTF-8 -nowarn -proc:none -cp "<Server>/bin;<Server>/dist/libs/*" -d classes <the five .java files>
+javac -encoding UTF-8 -nowarn -proc:none -cp "<Server>/bin;<Server>/dist/libs/*" -d classes <the ten .java files>
 java -cp "<Folder>/classes;<Server>/bin;<Server>/dist/libs/*" org.l2jmobius.gameserver.GameServer
 ```
 
@@ -89,7 +105,8 @@ The second command runs from `<Server>/dist/game`, with the JVM options in its `
 
 ## Layout of this repository
 
-No server files are kept here, only the patch, which carries the new class, the SQL file and the
-item file too. It is the one copy of the change and is edited directly. It adds no imports and
-names the new class in full instead, and its context lines are ones both kinds of High Five
-project share, so one patch fits either.
+No server files are kept here, only the patch, which carries the three new classes, the SQL file and
+the item file too. It is the one copy of the change and is edited directly. Its context lines are
+ones both kinds of High Five project share, so one patch fits either. Where the two keep different
+imports next to an added one, that hunk keeps only the lines they share as context, so in
+`CharacterCreate` the import sorts in place in the free release's order alone.

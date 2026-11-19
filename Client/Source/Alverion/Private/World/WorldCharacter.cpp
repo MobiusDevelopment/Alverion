@@ -17,6 +17,7 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "World/DamageNumbersComponent.h"
 #include "World/SceneSetup.h"
 #include "World/Water.h"
 #include "ServerConnectionSubsystem.h"
@@ -27,6 +28,9 @@ namespace
 	constexpr float runSpeedCm = 460.0f;
 
 	constexpr float capsuleRadiusCm = 34.0f;
+
+	// How long the sword stays in hand after a swing at nothing, outside any fight the server knows of.
+	constexpr float worldCharacterReadySeconds = 4.0f;
 	constexpr float capsuleHalfHeightCm = 90.0f;
 	constexpr float cameraDistanceCm = 450.0f;
 
@@ -110,6 +114,84 @@ AWorldCharacter::AWorldCharacter()
 	_body->SetupAttachment(RootComponent);
 
 	_streaming = CreateDefaultSubobject<UWorldPartitionStreamingSourceComponent>(TEXT("Streaming"));
+
+	// The numbers of the blows taken rise from just over the head.
+	_damageNumbers = CreateDefaultSubobject<UDamageNumbersComponent>(TEXT("DamageNumbers"));
+	_damageNumbers->SetupAttachment(RootComponent);
+	_damageNumbers->SetRelativeLocation(FVector(0.0f, 0.0f, capsuleHalfHeightCm + 95.0f));
+}
+
+void AWorldCharacter::strike(const FVector& targetLocation)
+{
+	const FVector toTarget = targetLocation - GetActorLocation();
+	if (!toTarget.IsNearlyZero())
+	{
+		SetActorRotation(FRotator(0.0f, toTarget.Rotation().Yaw, 0.0f));
+	}
+
+	strikeAir();
+}
+
+void AWorldCharacter::strikeAir()
+{
+	if ((_metaHuman != nullptr) && !_fallen)
+	{
+		Appearance::perform(*_metaHuman, Appearance::EAction::Strike, _strikes++);
+		_readySeconds = worldCharacterReadySeconds;
+	}
+}
+
+void AWorldCharacter::takeHit(int32 damage, uint8 flags)
+{
+	if ((_metaHuman != nullptr) && ((flags & Network::GameServer::hitMissed) == 0))
+	{
+		Appearance::perform(*_metaHuman, Appearance::EAction::Hit, FMath::Rand());
+	}
+
+	_damageNumbers->show(damage, flags);
+}
+
+void AWorldCharacter::setFallen(bool fallen)
+{
+	_fallen = fallen;
+
+	// A fallen character goes nowhere until it gets up, which the server says with a Revive.
+	if (fallen)
+	{
+		GetCharacterMovement()->DisableMovement();
+	}
+	else
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
+
+	if (_metaHuman == nullptr)
+	{
+		return;
+	}
+
+	if (fallen)
+	{
+		Appearance::perform(*_metaHuman, Appearance::EAction::Fall, 0);
+	}
+	else
+	{
+		Appearance::standUp(*_metaHuman);
+	}
+}
+
+bool AWorldCharacter::isFallen() const
+{
+	return _fallen;
+}
+
+void AWorldCharacter::setInCombat(bool inCombat)
+{
+	_inCombat = inCombat;
+	if (_metaHuman != nullptr)
+	{
+		Appearance::holdWeapon(*_metaHuman, inCombat);
+	}
 }
 
 void AWorldCharacter::BeginPlay()
@@ -177,6 +259,17 @@ void AWorldCharacter::wear(const Network::FAppearance& appearance)
 
 		character->_metaHuman = body;
 		character->updateViewHeight();
+
+		// A fight or a fall that began while the body loaded.
+		if (character->_inCombat)
+		{
+			Appearance::holdWeapon(*body, true);
+		}
+
+		if (character->_fallen)
+		{
+			Appearance::perform(*body, Appearance::EAction::Fall, 0);
+		}
 		character->_body->SetVisibility(false);
 		body->SetActorHiddenInGame(character->_firstPerson);
 	});
@@ -380,6 +473,11 @@ void AWorldCharacter::moveRight()
 
 void AWorldCharacter::move(float forward, float right)
 {
+	if (_fallen)
+	{
+		return;
+	}
+
 	// Yaw only on land, so looking up does not walk the character into the ground; in water the pitch too, so looking down dives.
 	// In rear view the camera faces back, so the half turn is undone and the keys still move the way the character faced.
 	const float yaw = GetControlRotation().Yaw + (_rearView ? 180.0f : 0.0f);
@@ -491,6 +589,16 @@ void AWorldCharacter::Tick(float deltaSeconds)
 
 	dressFromInventory();
 
+	// A swing outside a fight takes the sword in hand for a while; the server's own fights put it away when they end.
+	if (_readySeconds > 0.0f)
+	{
+		_readySeconds -= deltaSeconds;
+		if ((_readySeconds <= 0.0f) && !_inCombat && (_metaHuman != nullptr))
+		{
+			Appearance::holdWeapon(*_metaHuman, false);
+		}
+	}
+
 	const APlayerController* controller = Cast<APlayerController>(GetController());
 
 	// Any other key, button or click stops auto run. The cheap any-key check comes first, so the full scan runs only on a press.
@@ -539,7 +647,7 @@ void AWorldCharacter::Tick(float deltaSeconds)
 	{
 		const float speed = static_cast<float>(GetVelocity().Size2D());
 		const bool still = (speed < standingSpeedCm);
-		Appearance::EMotion motion = still ? Appearance::EMotion::Idle : Appearance::EMotion::Run;
+		Appearance::EMotion motion = still ? (_inCombat ? Appearance::EMotion::CombatIdle : Appearance::EMotion::Idle) : Appearance::EMotion::Run;
 		if (_swimming)
 		{
 			motion = still ? Appearance::EMotion::SwimIdle : Appearance::EMotion::Swim;
@@ -572,7 +680,7 @@ void AWorldCharacter::swimOrStand(float deltaSeconds)
 	query.AddIgnoredActor(this);
 
 	FHitResult hit;
-	const bool found = GetWorld()->LineTraceSingleByChannel(hit, here, here - FVector(0.0, 0.0, settleSearchCm), ECC_WorldStatic, query);
+	const bool found = GetWorld()->LineTraceSingleByObjectType(hit, here, here - FVector(0.0, 0.0, settleSearchCm), FCollisionObjectQueryParams(ECC_WorldStatic), query);
 	const bool deep = Water::tooDeep(found ? hit.ImpactPoint.Z : (Water::surfaceCm - settleSearchCm), _swimming);
 
 	UCharacterMovementComponent* movement = GetCharacterMovement();
@@ -625,7 +733,8 @@ bool AWorldCharacter::settleOnGround()
 	query.AddIgnoredActor(this);
 
 	FHitResult hit;
-	if (!GetWorld()->LineTraceSingleByChannel(hit, here + FVector(0.0, 0.0, settleSearchCm), here - FVector(0.0, 0.0, settleSearchCm), ECC_WorldStatic, query))
+	// Only the world's own geometry is ground, never a character standing in the way.
+	if (!GetWorld()->LineTraceSingleByObjectType(hit, here + FVector(0.0, 0.0, settleSearchCm), here - FVector(0.0, 0.0, settleSearchCm), FCollisionObjectQueryParams(ECC_WorldStatic), query))
 	{
 		return false;
 	}

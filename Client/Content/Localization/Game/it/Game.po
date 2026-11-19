@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-13 06:29\n"
-"PO-Revision-Date: 2026-11-13 06:29\n"
+"POT-Creation-Date: 2026-11-17 22:49\n"
+"PO-Revision-Date: 2026-11-17 22:49\n"
 "Language-Team: \n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
@@ -285,6 +285,27 @@ msgstr "Dire"
 msgctxt "ST_Game,chat.shout"
 msgid "Shout"
 msgstr "Urlare"
+
+#. Key:	combat.died
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,combat.died"
+msgid "You have died"
+msgstr "Sei morto"
+
+#. Key:	combat.miss
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,combat.miss"
+msgid "Miss"
+msgstr "Mancato"
+
+#. Key:	combat.respawn
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,combat.respawn"
+msgid "Respawn"
+msgstr "Rinasci"
 
 #. Key:	inventory.bin
 #. SourceLocation:	Localization/StringTables/ST_Game.csv
@@ -740,6 +761,13 @@ msgstr "Accedi"
 msgctxt "ST_Game,login.password"
 msgid "Password"
 msgstr "Password"
+
+#. Key:	loot.take_all
+#. SourceLocation:	Localization/StringTables/ST_Game.csv
+#: Localization/StringTables/ST_Game.csv
+msgctxt "ST_Game,loot.take_all"
+msgid "Take All"
+msgstr "Prendi tutto"
 
 #. Key:	map.title
 #. SourceLocation:	Localization/StringTables/ST_Game.csv

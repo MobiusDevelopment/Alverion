@@ -20,6 +20,10 @@ DECLARE_DELEGATE_TwoParams(FLocalCorrected, const FObjectPlace&, bool);
 DECLARE_DELEGATE_OneParam(FChatReceived, const FChatMessage&);
 DECLARE_DELEGATE_OneParam(FNpcHtmlReceived, const FNpcHtml&);
 DECLARE_DELEGATE_TwoParams(FMoveTypeChanged, uint32, bool);
+DECLARE_DELEGATE_OneParam(FAttackReceived, const FAttack&);
+DECLARE_DELEGATE_TwoParams(FLifeChanged, uint32, bool);
+DECLARE_DELEGATE_TwoParams(FCombatStanceChanged, uint32, bool);
+DECLARE_DELEGATE_OneParam(FCorpseLootReceived, const FCorpseLoot&);
 
 /**
  * The world, from EnterWorld on.
@@ -86,6 +90,42 @@ public:
 	/** A dialog page, whether it answers talking to a townsperson or a link in the dialog already open. */
 	FNpcHtmlReceived onNpcHtml;
 
+	/** Somebody struck, this client's own character included: the attacker and every blow, which lands as the swing does. */
+	FAttackReceived onAttack;
+
+	/** Somebody fell, false, or got up again, true. */
+	FLifeChanged onLifeChanged;
+
+	/** Somebody went into combat, true, or left it, false, which is when a fighter holds a weapon ready. */
+	FCombatStanceChanged onCombatStance;
+
+	/**
+	 * Fights a creature: the second click on a monster the server has selected is an attack, the way it is talking for a townsperson.
+	 * The server keeps striking until the creature falls or this character moves, and moves nobody into reach, since this client steers its own.
+	 */
+	bool attack(uint32 objectId);
+
+	/** Asks for a fallen character to be taken to the nearest village and revived there. */
+	bool returnToVillage();
+
+	/** What a corpse holds, each time the server answers a loot request. */
+	FCorpseLootReceived onCorpseLoot;
+
+	/** Asks what a corpse holds. Anyone standing next to it may loot it, and the server answers with its loot list. */
+	bool openLoot(uint32 corpseId);
+
+	/** Takes one stack off a corpse, named by its place in the list the server last sent and its item. */
+	bool takeLoot(uint32 corpseId, int32 index, int32 itemId);
+
+	/** Takes everything off a corpse that fits in the bag. */
+	bool takeAllLoot(uint32 corpseId);
+
+	/** What the server says this client has selected. Zero for nothing. */
+	uint32 targetObjectId() const;
+
+	/** The health the server last gave for a creature, which it gives for whatever this client has selected and fights. False when it gave none. */
+	bool healthOf(uint32 objectId, int32& current, int32& maximum) const;
+
 	/** Says a line on a channel. Empty lines are not sent, and nothing goes out outside the world. */
 	bool say(const FString& text, EChatChannel channel);
 
@@ -108,6 +148,9 @@ private:
 	void sendMove(const FVector& target);
 	void sendValidate();
 	void sendAction(uint32 objectId);
+
+	/** Sends one loot request for a corpse. Returns false when there is no world to send to or no corpse. */
+	bool sendLoot(GameServer::ELootAction action, uint32 corpseId, int32 index, int32 itemId);
 
 	/** Whether there is a world to send to. */
 	bool canSend() const;
@@ -132,6 +175,9 @@ private:
 
 	/** What the server says this client has selected, from MyTargetSelected and TargetUnselected. Zero for nothing. */
 	uint32 _targetObjectId = 0;
+
+	/** Current and maximum health of the creatures other than this client's own, from their StatusUpdates. */
+	TMap<uint32, TPair<int32, int32>> _health;
 
 	/** The townsperson being talked to, until the second click goes out or the wait runs out. Zero when there is none. */
 	uint32 _talkObjectId = 0;

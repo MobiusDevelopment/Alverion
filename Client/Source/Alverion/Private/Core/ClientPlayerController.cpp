@@ -9,7 +9,9 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "UI/ActionBarWidget.h"
+#include "UI/DeathMenuWidget.h"
 #include "UI/GameMenuWidget.h"
+#include "UI/LootWidget.h"
 #include "UI/ChatLineWidget.h"
 #include "UI/InventoryLayout.h"
 #include "UI/InventoryWidget.h"
@@ -19,6 +21,7 @@
 #include "Core/InputBootstrapSubsystem.h"
 #include "ServerConnectionSubsystem.h"
 #include "UI/UISubsystem.h"
+#include "World/WorldCharacter.h"
 #include "World/WorldGameMode.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 
@@ -32,11 +35,31 @@ namespace
 
 	// A dialog is closed once the character has walked a little past the range it was opened from, which is well inside the 250 units the server allows.
 	constexpr double dialogLeaveRangeCm = 70.0 * Network::worldUnitCm;
+
+	// How near a monster has to be, in server units, for a swing to reach it. The server allows the weapon's range, 40 for a sword and 20 bare-handed, and both bodies' widths besides.
+	constexpr double attackArmedReachUnits = 50.0;
+	constexpr double attackUnarmedReachUnits = 30.0;
+
+	// The loot window closes once the character is this far from the corpse, still inside the 150 units the server loots within.
+	constexpr double lootLeaveRangeCm = 120.0 * Network::worldUnitCm;
 }
 
 void AClientPlayerController::PlayerTick(float deltaSeconds)
 {
 	Super::PlayerTick(deltaSeconds);
+
+	// The loot window closes once the character walks away from the corpse, or the corpse goes.
+	if (_loot.IsValid() && _loot->IsActivated())
+	{
+		UWorld* lootWorld = GetWorld();
+		const AWorldGameMode* lootMode = (lootWorld != nullptr) ? lootWorld->GetAuthGameMode<AWorldGameMode>() : nullptr;
+		const APawn* looter = GetPawn();
+		double lootDistance = 0.0;
+		if ((lootMode != nullptr) && (looter != nullptr) && (!lootMode->distanceToCreature(_loot->corpseId(), *looter, lootDistance) || (lootDistance > lootLeaveRangeCm)))
+		{
+			_loot->DeactivateWidget();
+		}
+	}
 
 	if (_dialogObjectId == 0)
 	{
@@ -158,6 +181,12 @@ void AClientPlayerController::SetupInputComponent()
 		UE_LOG(LogTemp, Warning, TEXT("ClientPlayerController could not load %s, so the interact key does nothing."), interactActionPath);
 	}
 
+	const UInputAction* attackAction = (bootstrap != nullptr) ? bootstrap->getAttackAction() : nullptr;
+	if (attackAction != nullptr)
+	{
+		enhancedInput->BindAction(attackAction, ETriggerEvent::Started, this, &AClientPlayerController::attack);
+	}
+
 	// The action bar's keys, each using what its slot points at.
 	for (int32 index = 0; index < UActionBarWidget::slotCount; index++)
 	{
@@ -236,7 +265,13 @@ void AClientPlayerController::toggleGameMenu()
 
 	// A second press closes what the first opened, rather than stacking another copy.
 	// Options open over the menu take Escape themselves, so a press arriving here always meets the menu.
+	// The death menu stays: Respawn is the only way out of it.
 	UCommonActivatableWidget* open = layer->GetActiveWidget();
+	if (Cast<UDeathMenuWidget>(open) != nullptr)
+	{
+		return;
+	}
+
 	if (open != nullptr)
 	{
 		open->DeactivateWidget();
@@ -244,6 +279,56 @@ void AClientPlayerController::toggleGameMenu()
 	}
 
 	openScreen(UGameMenuWidget::StaticClass());
+}
+
+void AClientPlayerController::showDeathMenu(TFunction<void()> onRespawn)
+{
+	if (_deathMenu.IsValid() && _deathMenu->IsActivated())
+	{
+		return;
+	}
+
+	UDeathMenuWidget* menu = Cast<UDeathMenuWidget>(openScreen(UDeathMenuWidget::StaticClass()));
+	if (menu != nullptr)
+	{
+		menu->setup(MoveTemp(onRespawn));
+		_deathMenu = menu;
+	}
+}
+
+void AClientPlayerController::closeDeathMenu()
+{
+	if (_deathMenu.IsValid() && _deathMenu->IsActivated())
+	{
+		_deathMenu->DeactivateWidget();
+	}
+
+	_deathMenu.Reset();
+}
+
+void AClientPlayerController::showLoot(const Network::FCorpseLoot& loot, const FText& corpseName)
+{
+	const bool open = _loot.IsValid() && _loot->IsActivated();
+	if (loot.stacks.IsEmpty())
+	{
+		// Nothing left, or the corpse gone: an open window on that corpse closes, and nothing opens for an empty one.
+		if (open && (_loot->corpseId() == loot.corpseId))
+		{
+			_loot->DeactivateWidget();
+		}
+
+		return;
+	}
+
+	if (!open)
+	{
+		_loot = Cast<ULootWidget>(openScreen(ULootWidget::StaticClass()));
+	}
+
+	if (_loot.IsValid())
+	{
+		_loot->show(loot, corpseName);
+	}
 }
 
 void AClientPlayerController::toggleInventory()
@@ -286,11 +371,58 @@ void AClientPlayerController::interact()
 		return;
 	}
 
+	// A corpse underfoot is looted before a townsperson nearby is talked to.
+	const uint32 corpseId = mode->corpseInFront(*character);
+	if (corpseId != 0)
+	{
+		connection->world().openLoot(corpseId);
+		return;
+	}
+
 	const uint32 objectId = mode->townspersonInFront(*character);
 	if (objectId != 0)
 	{
 		connection->world().talkTo(objectId);
 	}
+}
+
+void AClientPlayerController::attack()
+{
+	UGameInstance* gameInstance = GetGameInstance();
+	UUISubsystem* subsystem = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UUISubsystem>() : nullptr;
+	UCommonActivatableWidgetStack* layer = (subsystem != nullptr) ? subsystem->getLayer(EUILayer::GameMenu) : nullptr;
+	UServerConnectionSubsystem* connection = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	UWorld* world = GetWorld();
+	AWorldGameMode* mode = (world != nullptr) ? world->GetAuthGameMode<AWorldGameMode>() : nullptr;
+	AWorldCharacter* character = Cast<AWorldCharacter>(GetPawn());
+	if ((connection == nullptr) || (mode == nullptr) || (character == nullptr) || ((layer != nullptr) && (layer->GetActiveWidget() != nullptr)))
+	{
+		return;
+	}
+
+	if (character->isFallen())
+	{
+		mode->offerReturnToVillage();
+		return;
+	}
+
+	// The reach the server allows is the weapon's range and both bodies, and the swing is kept short of it so the server never has to walk the character in.
+	bool armed = false;
+	for (const Network::FInventoryItem& item : connection->world().items())
+	{
+		armed = armed || (item.equipped && (item.type2 == 0));
+	}
+
+	const double reachCm = (armed ? attackArmedReachUnits : attackUnarmedReachUnits) * Network::worldUnitCm;
+	const FVector aim = FRotator(0.0f, GetControlRotation().Yaw, 0.0f).Vector();
+	const uint32 objectId = mode->monsterInFront(character->GetActorLocation(), aim, reachCm);
+	if (objectId != 0)
+	{
+		connection->world().attack(objectId);
+		return;
+	}
+
+	character->strikeAir();
 }
 
 void AClientPlayerController::showNpcHtml(const Network::FNpcHtml& message)

@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "Core/GameSettings.h"
 #include "Kismet/GameplayStatics.h"
+#include "World/DamageNumbersComponent.h"
 #include "World/SceneSetup.h"
 #include "World/Water.h"
 
@@ -40,6 +41,11 @@ AProxyCharacter::AProxyCharacter()
 	_label->SetRelativeLocation(FVector(0.0f, 0.0f, labelHeightCm));
 	_label->SetHorizontalAlignment(EHTA_Center);
 	_label->SetWorldSize(24.0f);
+
+	// The numbers of the blows it takes rise from just under the nameplate.
+	_damageNumbers = CreateDefaultSubobject<UDamageNumbersComponent>(TEXT("DamageNumbers"));
+	_damageNumbers->SetupAttachment(RootComponent);
+	_damageNumbers->SetRelativeLocation(FVector(0.0f, 0.0f, labelHeightCm - 30.0f));
 }
 
 void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
@@ -51,6 +57,7 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 	_label->SetTextRenderColor(color.ToFColor(true));
 
 	_townsperson = spawn.isNpc && !spawn.attackable;
+	_monster = spawn.isNpc && spawn.attackable;
 	_speed = spawn.runSpeed;
 	_walkSpeed = spawn.walkSpeed;
 	_swimSpeed = spawn.swimSpeed;
@@ -116,6 +123,23 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 		proxy->_bodyRestRotation = body->GetRootComponent()->GetRelativeRotation().Quaternion();
 		proxy->_body->SetVisibility(false);
 
+		// Goblins fight with the starter sword, which the dressing that gives players theirs never reaches.
+		if (goblin)
+		{
+			Appearance::armWithSword(*body);
+		}
+
+		// A fight or a fall that began while the body loaded.
+		if (proxy->_inCombat)
+		{
+			Appearance::holdWeapon(*body, true);
+		}
+
+		if (proxy->_fallen)
+		{
+			Appearance::perform(*body, Appearance::EAction::Fall, 0);
+		}
+
 		// Equipment that changed while the body loaded.
 		if ((proxy->_worn != worn) && !goblin)
 		{
@@ -127,6 +151,73 @@ void AProxyCharacter::setup(const Network::FCharacterSpawn& spawn)
 bool AProxyCharacter::isTownsperson() const
 {
 	return _townsperson;
+}
+
+bool AProxyCharacter::isMonster() const
+{
+	return _monster;
+}
+
+bool AProxyCharacter::isFallen() const
+{
+	return _fallen;
+}
+
+FString AProxyCharacter::displayName() const
+{
+	return _label->Text.ToString();
+}
+
+void AProxyCharacter::strike(const FVector& targetLocation)
+{
+	const FVector toTarget = targetLocation - GetActorLocation();
+	if (!toTarget.IsNearlyZero())
+	{
+		SetActorRotation(FRotator(0.0f, toTarget.Rotation().Yaw, 0.0f));
+	}
+
+	if (_metaHuman != nullptr)
+	{
+		Appearance::perform(*_metaHuman, Appearance::EAction::Strike, _strikes++);
+	}
+}
+
+void AProxyCharacter::takeHit(int32 damage, uint8 flags)
+{
+	if ((_metaHuman != nullptr) && ((flags & Network::GameServer::hitMissed) == 0))
+	{
+		Appearance::perform(*_metaHuman, Appearance::EAction::Hit, FMath::Rand());
+	}
+
+	_damageNumbers->show(damage, flags);
+}
+
+void AProxyCharacter::setFallen(bool fallen)
+{
+	_fallen = fallen;
+	_walking = false;
+	if (_metaHuman == nullptr)
+	{
+		return;
+	}
+
+	if (fallen)
+	{
+		Appearance::perform(*_metaHuman, Appearance::EAction::Fall, 0);
+	}
+	else
+	{
+		Appearance::standUp(*_metaHuman);
+	}
+}
+
+void AProxyCharacter::setInCombat(bool inCombat)
+{
+	_inCombat = inCombat;
+	if (_metaHuman != nullptr)
+	{
+		Appearance::holdWeapon(*_metaHuman, inCombat);
+	}
 }
 
 void AProxyCharacter::EndPlay(const EEndPlayReason::Type reason)
@@ -165,10 +256,10 @@ FVector AProxyCharacter::settle(const FVector& location)
 	FCollisionQueryParams query;
 	query.AddIgnoredActor(this);
 
-	// No island under a place is open sea.
+	// No island under a place is open sea. Only the world's own geometry is ground: a character's capsule or body in the way would stand this one on its head.
 	const FVector above = location + FVector(0.0, 0.0, groundSearchCm);
 	const FVector below = location - FVector(0.0, 0.0, groundSearchCm);
-	const bool found = GetWorld()->LineTraceSingleByChannel(hit, above, below, ECC_WorldStatic, query);
+	const bool found = GetWorld()->LineTraceSingleByObjectType(hit, above, below, FCollisionObjectQueryParams(ECC_WorldStatic), query);
 	_groundNormal = found ? FVector(hit.ImpactNormal) : FVector::UpVector;
 	_groundRetrySeconds = found ? 0.0f : groundRetryIntervalSeconds;
 	_swimming = Water::tooDeep(found ? hit.ImpactPoint.Z : (Water::surfaceCm - groundSearchCm), _swimming);
@@ -204,7 +295,8 @@ void AProxyCharacter::Tick(float deltaSeconds)
 	// The short goblin uses floor contacts baked for its leg length on land.
 	if (_metaHuman != nullptr)
 	{
-		Appearance::EMotion motion = _walking ? (_wearsGoblin ? Appearance::EMotion::GoblinMove : Appearance::EMotion::Move) : (_wearsGoblin ? Appearance::EMotion::GoblinIdle : Appearance::EMotion::Idle);
+		const Appearance::EMotion standing = _wearsGoblin ? Appearance::EMotion::GoblinIdle : (_inCombat ? Appearance::EMotion::CombatIdle : Appearance::EMotion::Idle);
+		Appearance::EMotion motion = _walking ? (_wearsGoblin ? Appearance::EMotion::GoblinMove : Appearance::EMotion::Move) : standing;
 		if (_swimming)
 		{
 			motion = _walking ? Appearance::EMotion::Swim : Appearance::EMotion::SwimIdle;
