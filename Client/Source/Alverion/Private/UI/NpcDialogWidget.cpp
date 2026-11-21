@@ -47,7 +47,7 @@ namespace
 	constexpr float npcDialogRadius = 8.0f;
 	constexpr float npcDialogCloseSize = 40.0f;
 	constexpr float npcDialogLineGap = 12.0f;
-	constexpr float NPC_DIALOG_ROW_SPACING = 6.0f;
+	constexpr float NPC_DIALOG_ROW_SPACING = 18.0f;
 	constexpr float npcDialogLinkRadius = 6.0f;
 	constexpr int32 npcDialogFontSize = 18;
 	constexpr int32 npcDialogTitleFontSize = 24;
