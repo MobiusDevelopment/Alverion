@@ -123,6 +123,11 @@ AWorldCharacter::AWorldCharacter()
 
 void AWorldCharacter::strike(const FVector& targetLocation)
 {
+	if (isAttacking())
+	{
+		return;
+	}
+
 	const FVector toTarget = targetLocation - GetActorLocation();
 	if (!toTarget.IsNearlyZero())
 	{
@@ -136,9 +141,22 @@ void AWorldCharacter::strikeAir()
 {
 	if ((_metaHuman != nullptr) && !_fallen)
 	{
-		Appearance::perform(*_metaHuman, Appearance::EAction::Strike, _strikes++);
-		_readySeconds = worldCharacterReadySeconds;
+		if (Appearance::perform(*_metaHuman, Appearance::EAction::Strike, _strikes))
+		{
+			_strikes++;
+			_readySeconds = worldCharacterReadySeconds;
+		}
 	}
+}
+
+bool AWorldCharacter::isAttacking() const
+{
+	if (_metaHuman == nullptr)
+	{
+		return false;
+	}
+
+	return Appearance::isAttacking(*_metaHuman);
 }
 
 void AWorldCharacter::takeHit(int32 damage, uint8 flags)

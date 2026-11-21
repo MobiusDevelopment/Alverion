@@ -60,6 +60,8 @@ public:
 	/** Swings with nothing in reach, which the server never hears of. */
 	void strikeAir();
 
+	bool isAttacking() const;
+
 	/** Takes a blow: flinches unless it missed, and shows the damage over the head. */
 	void takeHit(int32 damage, uint8 flags);
 

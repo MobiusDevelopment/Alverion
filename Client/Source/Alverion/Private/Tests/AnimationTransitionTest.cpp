@@ -102,10 +102,12 @@ bool FAnimationTransitionTest::RunTest(const FString& parameters)
 	source = sampleHand(1.0f / 120.0f);
 	Appearance::perform(*body, Appearance::EAction::Strike, 0);
 	checkTransition(TEXT("Starting a sword attack"), source, 0.25f);
-	source = sampleHand(1.0f / 120.0f);
-	Appearance::perform(*body, Appearance::EAction::Strike, 0);
-	TestEqual(TEXT("The same attack restarts at frame zero"), player->GetCurrentTime(), 0.0f);
-	checkTransition(TEXT("Restarting the same sword attack"), source, 0.0f);
+	UAnimationAsset* strike = player->GetAnimationAsset();
+	TestTrue(TEXT("The body reports an active swing"), Appearance::isAttacking(*body));
+	TestFalse(TEXT("A repeated attack is rejected"), Appearance::perform(*body, Appearance::EAction::Strike, 0));
+	TestEqual(TEXT("Pressing attack again leaves the swing at its current frame"), player->GetCurrentTime(), 0.25f);
+	Appearance::perform(*body, Appearance::EAction::Strike, 1);
+	TestEqual(TEXT("A second attack variant cannot interrupt the swing"), player->GetAnimationAsset(), strike);
 
 	for (int32 frame = 0; frame < 120; frame++)
 	{
@@ -114,6 +116,14 @@ bool FAnimationTransitionTest::RunTest(const FString& parameters)
 	source = sampleHand(1.0f / 120.0f);
 	Appearance::animate(*body, Appearance::EMotion::Idle, 0.0f);
 	checkTransition(TEXT("Recovering from a sword attack"), source, 0.0f);
+
+	TestFalse(TEXT("The swing releases the input lock when it ends"), Appearance::isAttacking(*body));
+	TestTrue(TEXT("A flinch can start after the swing"), Appearance::perform(*body, Appearance::EAction::Hit, 0));
+	TestFalse(TEXT("A flinch does not lock attack input"), Appearance::isAttacking(*body));
+	TestTrue(TEXT("A fresh attack plays once the first swing has ended"), Appearance::perform(*body, Appearance::EAction::Strike, 1));
+	TestEqual(TEXT("The fresh attack starts at frame zero"), player->GetCurrentTime(), 0.0f);
+	TestTrue(TEXT("A fall can interrupt a swing"), Appearance::perform(*body, Appearance::EAction::Fall, 0));
+	TestFalse(TEXT("Falling clears the strike lock"), Appearance::isAttacking(*body));
 
 	return true;
 }

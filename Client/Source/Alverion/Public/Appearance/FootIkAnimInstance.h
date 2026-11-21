@@ -80,6 +80,7 @@ public:
 
 	/** When the one-off playing over the body's motions ends, in world seconds. The motions wait until then. */
 	double actionEndSeconds = 0.0;
+	bool strikeAction = false;
 
 	/** Fallen, which holds the fall's last pose until the body gets up. */
 	bool fallen = false;

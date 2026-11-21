@@ -170,6 +170,14 @@ FString AProxyCharacter::displayName() const
 
 void AProxyCharacter::strike(const FVector& targetLocation)
 {
+	if (_metaHuman != nullptr)
+	{
+		if (Appearance::isAttacking(*_metaHuman))
+		{
+			return;
+		}
+	}
+
 	const FVector toTarget = targetLocation - GetActorLocation();
 	if (!toTarget.IsNearlyZero())
 	{
@@ -178,7 +186,10 @@ void AProxyCharacter::strike(const FVector& targetLocation)
 
 	if (_metaHuman != nullptr)
 	{
-		Appearance::perform(*_metaHuman, Appearance::EAction::Strike, _strikes++);
+		if (Appearance::perform(*_metaHuman, Appearance::EAction::Strike, _strikes))
+		{
+			_strikes++;
+		}
 	}
 }
 

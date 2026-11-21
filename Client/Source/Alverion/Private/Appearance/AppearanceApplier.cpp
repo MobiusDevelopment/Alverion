@@ -1610,7 +1610,20 @@ namespace Appearance
 		requestNamedBodyClass(characterNameFor(appearance), appearance.species == Network::EAppearanceSpecies::Dwarf, MoveTemp(whenReady));
 	}
 
-	void perform(AActor& body, EAction action, int32 variant)
+	bool isAttacking(AActor& body)
+	{
+		const UWorld* world = body.GetWorld();
+		const USkeletalMeshComponent* mesh = findMesh(body, TEXT("Body"));
+		const UFootIkAnimInstance* player = (mesh != nullptr) ? Cast<UFootIkAnimInstance>(mesh->GetAnimInstance()) : nullptr;
+		if ((player == nullptr) || !player->strikeAction || (world == nullptr))
+		{
+			return false;
+		}
+
+		return world->GetTimeSeconds() < player->actionEndSeconds;
+	}
+
+	bool perform(AActor& body, EAction action, int32 variant)
 	{
 		// More than one clip a kind where the library has them, taken in turn, so blows in a row do not repeat.
 		static const TCHAR* const swordClips[] =
@@ -1639,17 +1652,18 @@ namespace Appearance
 		const UWorld* world = body.GetWorld();
 		if ((player == nullptr) || (world == nullptr) || player->fallen)
 		{
-			return;
+			return false;
 		}
 
 		const double now = world->GetTimeSeconds();
-		if ((action == EAction::Hit) && (now < player->actionEndSeconds))
+		const bool strike = action == EAction::Strike;
+		if ((now < player->actionEndSeconds) && ((action == EAction::Hit) || (strike && player->strikeAction)))
 		{
-			return;
+			return false;
 		}
 
 		// A sword swings from the hand, so a strike takes it from the hip first, before the server has said the fight began.
-		const bool sword = (action == EAction::Strike) && wieldsSword(body);
+		const bool sword = strike && wieldsSword(body);
 		if (sword)
 		{
 			holdWeapon(body, true);
@@ -1659,10 +1673,10 @@ namespace Appearance
 		UAnimSequenceBase* clip = LoadObject<UAnimSequenceBase>(nullptr, clips[FMath::Abs(variant) % clips.Num()]);
 		if (clip == nullptr)
 		{
-			return;
+			return false;
 		}
 
-		// Started from the top even when the same clip played last, as two blows in a row are two swings.
+		// A strike accepted after the last one ends starts at the top even when it uses the same clip.
 		player->SetAnimationAsset(clip, false);
 		player->SetPosition(0.0f);
 		player->SetPlaying(true);
@@ -1673,6 +1687,8 @@ namespace Appearance
 		player->plantFeet = false;
 		player->fallen = (action == EAction::Fall);
 		player->actionEndSeconds = now + clip->GetPlayLength();
+		player->strikeAction = strike;
+		return true;
 	}
 
 	void standUp(AActor& body)
@@ -1683,6 +1699,7 @@ namespace Appearance
 		{
 			player->fallen = false;
 			player->actionEndSeconds = 0.0;
+			player->strikeAction = false;
 		}
 	}
 

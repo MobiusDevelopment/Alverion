@@ -99,8 +99,11 @@ namespace Appearance
 		Fall
 	};
 
-	/** Plays a one-off on a MetaHuman's body. The variant picks among the clips of its kind, so blows in a row differ. Nothing plays over a fallen body. */
-	ALVERION_API void perform(AActor& body, EAction action, int32 variant);
+	/** Whether the body is still playing a strike. */
+	ALVERION_API bool isAttacking(AActor& body);
+
+	/** Plays a one-off and returns whether it started. The variant picks among clips of its kind. */
+	ALVERION_API bool perform(AActor& body, EAction action, int32 variant);
 
 	/** Lets a fallen body go back to its motions. */
 	ALVERION_API void standUp(AActor& body);

@@ -406,6 +406,11 @@ void AClientPlayerController::attack()
 		return;
 	}
 
+	if (character->isAttacking())
+	{
+		return;
+	}
+
 	// The reach the server allows is the weapon's range and both bodies, and the swing is kept short of it so the server never has to walk the character in.
 	bool armed = false;
 	for (const Network::FInventoryItem& item : connection->world().items())
