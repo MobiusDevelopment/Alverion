@@ -163,7 +163,7 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 		summarySlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
 
 		UHorizontalBox* paperdoll = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-		character->AddChildToVerticalBox(paperdoll);
+		character->AddChildToVerticalBox(paperdoll)->SetHorizontalAlignment(HAlign_Center);
 
 		// The paperdoll in InventoryLayout's order: a column left of the picture, a column right of it, then the jewelry in a row underneath.
 		const TConstArrayView<InventoryLayout::FPaperdollSlot> places = InventoryLayout::paperdollSlots();
@@ -172,14 +172,15 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 			_paperdoll.Add(makeItemSlot(*WidgetTree, EItemSlotKind::Paperdoll, place.location, LocalizedText::get(place.captionKey)));
 		}
 
+		const FMargin sideSlotPadding(0.0f, bagSlotGap * 0.5f);
 		UVerticalBox* leftSlots = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 		for (int32 index = 0; index < InventoryLayout::sideSlotCount; index++)
 		{
 			UVerticalBoxSlot* slot = leftSlots->AddChildToVerticalBox(_paperdoll[index]);
-			slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, bagSlotGap));
+			slot->SetPadding(sideSlotPadding);
 		}
 
-		paperdoll->AddChildToHorizontalBox(leftSlots);
+		paperdoll->AddChildToHorizontalBox(leftSlots)->SetVerticalAlignment(VAlign_Center);
 
 		USizeBox* portraitBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 		portraitBox->SetWidthOverride(sheetPortraitWidth);
@@ -190,16 +191,16 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 
 		UHorizontalBoxSlot* portraitSlot = paperdoll->AddChildToHorizontalBox(portraitBox);
 		portraitSlot->SetPadding(FMargin(bagSlotGap * 2.0f, 0.0f));
-		portraitSlot->SetVerticalAlignment(VAlign_Top);
+		portraitSlot->SetVerticalAlignment(VAlign_Center);
 
 		UVerticalBox* rightSlots = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 		for (int32 index = InventoryLayout::sideSlotCount; index < (InventoryLayout::sideSlotCount * 2); index++)
 		{
 			UVerticalBoxSlot* slot = rightSlots->AddChildToVerticalBox(_paperdoll[index]);
-			slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, bagSlotGap));
+			slot->SetPadding(sideSlotPadding);
 		}
 
-		paperdoll->AddChildToHorizontalBox(rightSlots);
+		paperdoll->AddChildToHorizontalBox(rightSlots)->SetVerticalAlignment(VAlign_Center);
 
 		UHorizontalBox* jewelry = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 		for (int32 index = InventoryLayout::sideSlotCount * 2; index < _paperdoll.Num(); index++)
