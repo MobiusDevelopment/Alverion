@@ -6,11 +6,13 @@
 #include "Components/EditableTextBox.h"
 #include "Components/MultiLineEditableTextBox.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Components/ScaleBox.h"
 #include "Components/ScrollBox.h"
 #include "Components/ScrollBoxSlot.h"
 #include "Components/SizeBox.h"
@@ -38,9 +40,10 @@ namespace
 	// What a link's text is when the page gave it no colour, so a link reads as one next to the plain text. Hovering a link brightens its button, as every button of the game does.
 	constexpr FLinearColor npcDialogLinkColor = FLinearColor(1.0f, 0.82f, 0.45f, 1.0f);
 
-	constexpr float npcDialogWidth = 640.0f;
-	constexpr float npcDialogMaxContentHeight = 520.0f;
-	constexpr float npcDialogPadding = 20.0f;
+	constexpr float NPC_DIALOG_WIDTH = 420.0f;
+	constexpr float NPC_DIALOG_HEIGHT = 540.0f;
+	constexpr float NPC_DIALOG_PAGE_WIDTH = 360.0f;
+	constexpr float NPC_DIALOG_INSET = 8.0f;
 	constexpr float npcDialogRadius = 8.0f;
 	constexpr float npcDialogCloseSize = 40.0f;
 	constexpr float npcDialogLineGap = 12.0f;
@@ -118,30 +121,40 @@ TSharedRef<SWidget> UNpcDialogWidget::RebuildWidget()
 		backdropSlot->SetHorizontalAlignment(HAlign_Fill);
 		backdropSlot->SetVerticalAlignment(VAlign_Fill);
 
-		USizeBox* panelBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		panelBox->SetWidthOverride(npcDialogWidth);
+		UScaleBox* fit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
+		fit->SetStretch(EStretch::ScaleToFit);
+		fit->SetStretchDirection(EStretchDirection::DownOnly);
+		UOverlaySlot* fitSlot = root->AddChildToOverlay(fit);
+		fitSlot->SetHorizontalAlignment(HAlign_Center);
+		fitSlot->SetVerticalAlignment(VAlign_Center);
+		fitSlot->SetPadding(FMargin(16.0f));
 
-		UOverlaySlot* panelSlot = root->AddChildToOverlay(panelBox);
-		panelSlot->SetHorizontalAlignment(HAlign_Center);
-		panelSlot->SetVerticalAlignment(VAlign_Center);
+		USizeBox* panelBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		panelBox->SetWidthOverride(NPC_DIALOG_WIDTH);
+		panelBox->SetHeightOverride(NPC_DIALOG_HEIGHT);
+		fit->AddChild(panelBox);
 
 		UBorder* panel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		panel->SetBrush(UIStyle::stateBrush(npcDialogPanelFill, UIStyle::outline, npcDialogRadius));
-		panel->SetPadding(FMargin(npcDialogPadding));
+		panel->SetBrush(UIStyle::stateBrush(npcDialogPanelFill, UIStyle::outlineHovered, npcDialogRadius));
+		panel->SetPadding(FMargin(NPC_DIALOG_INSET));
 		panelBox->AddChild(panel);
 
 		UVerticalBox* column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 		panel->SetContent(column);
 
-		// The title, and the close square at its right end.
-		UHorizontalBox* header = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-		UVerticalBoxSlot* headerSlot = column->AddChildToVerticalBox(header);
-		headerSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 10.0f));
+		UBorder* headerFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		headerFrame->SetBrush(UIStyle::stateBrush(FLinearColor(0.105f, 0.065f, 0.035f, 1.0f), UIStyle::outline, npcDialogRadius));
+		headerFrame->SetPadding(FMargin(16.0f, 8.0f, 8.0f, 8.0f));
+		column->AddChildToVerticalBox(headerFrame);
 
-		_title = UIStyle::makeLabel(*WidgetTree, FText::GetEmpty(), npcDialogTitleFontSize, npcDialogTitleColor);
+		UHorizontalBox* header = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		headerFrame->SetContent(header);
+		_title = UIStyle::makeLabel(*WidgetTree, NSLOCTEXT("NpcDialog", "Title", "Dialogue"), npcDialogTitleFontSize, npcDialogTitleColor);
+		_title->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 		UHorizontalBoxSlot* titleSlot = header->AddChildToHorizontalBox(_title);
 		titleSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 		titleSlot->SetVerticalAlignment(VAlign_Center);
+		titleSlot->SetPadding(FMargin(0.0f, 0.0f, 12.0f, 0.0f));
 
 		USizeBox* closeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 		closeBox->SetWidthOverride(npcDialogCloseSize);
@@ -156,13 +169,20 @@ TSharedRef<SWidget> UNpcDialogWidget::RebuildWidget()
 		closeBox->AddChild(_closeButton);
 		header->AddChildToHorizontalBox(closeBox);
 
-		// The page, which scrolls once it is taller than the dialog may be.
-		USizeBox* contentBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		contentBox->SetMaxDesiredHeight(npcDialogMaxContentHeight);
-		column->AddChildToVerticalBox(contentBox);
+		// Only the page scrolls, so the title and close button stay in reach.
+		UBorder* page = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		page->SetBrush(UIStyle::stateBrush(FLinearColor(0.022f, 0.019f, 0.017f, 1.0f), UIStyle::outline, npcDialogRadius));
+		page->SetPadding(FMargin(16.0f, 16.0f, 10.0f, 12.0f));
+		page->SetClipping(EWidgetClipping::ClipToBounds);
+		UVerticalBoxSlot* pageSlot = column->AddChildToVerticalBox(page);
+		pageSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		pageSlot->SetPadding(FMargin(0.0f, NPC_DIALOG_INSET, 0.0f, 0.0f));
 
 		_content = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
-		contentBox->AddChild(_content);
+		_content->SetScrollbarThickness(FVector2D(6.0f, 6.0f));
+		_content->SetScrollbarPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+		_content->SetScrollWhenFocusChanges(EScrollWhenFocusChanges::InstantScroll);
+		page->SetContent(_content);
 
 		WidgetTree->RootWidget = root;
 
@@ -192,12 +212,9 @@ void UNpcDialogWidget::showLines()
 		return;
 	}
 
-	if (_title->GetText().ToString() != _document.title)
-	{
-		_title->SetText(FText::FromString(_document.title));
-	}
-
-	_title->SetVisibility(_document.title.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	const FText title = _document.title.IsEmpty() ? NSLOCTEXT("NpcDialog", "Title", "Dialogue") : FText::FromString(_document.title);
+	_title->SetText(title);
+	_title->SetToolTipText(title);
 
 	_content->ClearChildren();
 	_links.Reset();
@@ -231,16 +248,21 @@ void UNpcDialogWidget::addLine(const NpcHtml::FLine& line)
 
 		UTextBlock* label = UIStyle::makeLabel(*WidgetTree, FText::FromString(text), npcDialogFontSize, npcDialogColorOf(line.runs[0]));
 		label->SetAutoWrapText(true);
+		label->SetLineHeightPercentage(1.16f);
 		label->SetJustification(line.centered ? ETextJustify::Center : ETextJustify::Left);
 		_content->AddChild(label);
 		return;
 	}
 
 	// A line that is one link is a button of its own, as wide as the page.
-	if ((line.runs.Num() == 1) && !line.centered && (line.runs[0].kind == NpcHtml::ERunKind::Text) && (line.runs[0].linkKind != NpcHtml::ELinkKind::None))
+	if ((line.runs.Num() == 1) && (line.runs[0].kind == NpcHtml::ERunKind::Text) && (line.runs[0].linkKind != NpcHtml::ELinkKind::None))
 	{
-		UScrollBoxSlot* slot = Cast<UScrollBoxSlot>(_content->AddChild(makeLinkButton(line.runs[0])));
-		slot->SetPadding(FMargin(0.0f, 2.0f));
+		UButton* button = makeLinkButton(line.runs[0]);
+		UButtonSlot* labelSlot = CastChecked<UButtonSlot>(button->GetContent()->Slot);
+		labelSlot->SetHorizontalAlignment(line.centered ? HAlign_Center : HAlign_Fill);
+		UScrollBoxSlot* slot = CastChecked<UScrollBoxSlot>(_content->AddChild(button));
+		slot->SetHorizontalAlignment(HAlign_Fill);
+		slot->SetPadding(FMargin(0.0f, 3.0f));
 		return;
 	}
 
@@ -300,7 +322,7 @@ UButton* UNpcDialogWidget::makeLinkButton(const NpcHtml::FRun& run)
 
 UWidget* UNpcDialogWidget::makeElement(const NpcHtml::FRun& run)
 {
-	const float width = (run.width > 0.0f) ? run.width : npcDialogFieldWidth;
+	const float width = (run.width > 0.0f) ? FMath::Min(run.width, NPC_DIALOG_PAGE_WIDTH) : npcDialogFieldWidth;
 	USizeBox* box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 	UWidget* field = nullptr;
 
@@ -309,7 +331,7 @@ UWidget* UNpcDialogWidget::makeElement(const NpcHtml::FRun& run)
 		// The page's pictures are textures of the stock client, which are not used. What is kept is their room, so the page lays out as it was written.
 		if ((run.width > 0.0f) || (run.height > 0.0f))
 		{
-			box->SetWidthOverride(run.width);
+			box->SetWidthOverride(FMath::Min(run.width, NPC_DIALOG_PAGE_WIDTH));
 			box->SetHeightOverride(run.height);
 		}
 

@@ -1,6 +1,12 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Blueprint/WidgetTree.h"
+#include "Components/Button.h"
+#include "Components/ScrollBox.h"
+#include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Misc/AutomationTest.h"
+#include "UI/NpcDialogWidget.h"
 #include "UI/NpcHtml.h"
 
 namespace
@@ -156,6 +162,75 @@ bool FNpcHtmlTest::RunTest(const FString& parameters)
 	}
 
 	TestEqual(TEXT("An empty page has no lines"), NpcHtml::parse(TEXT("<html><body><br> </body></html>")).lines.Num(), 0);
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNpcDialogLayoutTest, "Alverion.UI.NpcDialogLayout", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FNpcDialogLayoutTest::RunTest(const FString& parameters)
+{
+	UNpcDialogWidget* dialog = NewObject<UNpcDialogWidget>();
+	dialog->Initialize();
+	dialog->showPage(TEXT("<html><head><title>Guard</title></head><body>Be vigilant, traveller.<br><br>Report anyone suspicious.<br><a action=\"bypass npc_1_Quest\">Quest</a><br><a action=\"link default/guard.htm\">Next page</a></body></html>"));
+	const TSharedRef<SWidget> widget = dialog->TakeWidget();
+	widget->SlatePrepass(1.0f);
+
+	const FVector2D size = dialog->GetDesiredSize();
+	TestTrue(TEXT("The conversation window has portrait proportions"), (size.X > 0.0) && (size.Y > size.X));
+
+	UScrollBox* content = nullptr;
+	bool speakerNamed = false;
+	dialog->WidgetTree->ForEachWidget([&content, &speakerNamed](UWidget* widget)
+	{
+		if (UScrollBox* scroll = Cast<UScrollBox>(widget))
+		{
+			content = scroll;
+		}
+
+		if (const UTextBlock* label = Cast<UTextBlock>(widget))
+		{
+			speakerNamed = speakerNamed || (label->GetText().ToString() == TEXT("Guard"));
+		}
+	});
+	TestTrue(TEXT("The HTML title appears in the header"), speakerNamed);
+	if (!TestNotNull(TEXT("The page can scroll"), content))
+	{
+		return false;
+	}
+
+	if (TestEqual(TEXT("The scrolling page keeps both paragraphs, their gap and both choices"), content->GetChildrenCount(), 5))
+	{
+		const UTextBlock* greeting = Cast<UTextBlock>(content->GetChildAt(0));
+		if (TestNotNull(TEXT("The greeting appears first"), greeting))
+		{
+			TestEqual(TEXT("The greeting is preserved"), greeting->GetText().ToString(), FString(TEXT("Be vigilant, traveller.")));
+		}
+
+		TestNotNull(TEXT("The deliberate blank line keeps its space"), Cast<USizeBox>(content->GetChildAt(1)));
+		TestNotNull(TEXT("The line after the gap remains separate"), Cast<UTextBlock>(content->GetChildAt(2)));
+		TestNotNull(TEXT("Quest gets its own button row"), Cast<UButton>(content->GetChildAt(3)));
+		TestNotNull(TEXT("The next page link gets its own button row"), Cast<UButton>(content->GetChildAt(4)));
+	}
+
+	dialog->showPage(TEXT("<html><head><title>Gatekeeper</title></head><body>Destination:<br>Choose a town.</body></html>"));
+	const UTextBlock* first = Cast<UTextBlock>(content->GetChildAt(0));
+	if (TestNotNull(TEXT("The explicit title leaves the first body line in place"), first))
+	{
+		TestEqual(TEXT("The first body line retains its punctuation"), first->GetText().ToString(), FString(TEXT("Destination:")));
+	}
+
+	FString longPage = TEXT("<html><head><title>Guard</title></head><body>");
+	for (int32 line = 0; line < 64; line++)
+	{
+		longPage.Append(TEXT("Be vigilant, traveller.<br>"));
+	}
+
+	longPage.Append(TEXT("</body></html>"));
+	dialog->showPage(longPage);
+	dialog->ForceLayoutPrepass();
+	TestEqual(TEXT("Long pages keep the same frame size"), dialog->GetDesiredSize(), size);
+	TestEqual(TEXT("Every line stays in the scroll box"), content->GetChildrenCount(), 64);
 	return true;
 }
 
