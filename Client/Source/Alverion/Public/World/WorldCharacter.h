@@ -17,6 +17,7 @@ class USpringArmComponent;
 class UStaticMeshComponent;
 class UTextureRenderTarget2D;
 class UWorldPartitionStreamingSourceComponent;
+class FPreviewScene;
 struct FInputActionValue;
 
 /** The player's own character. It moves itself and tells the server where it is, which the server accepts in keyboard mode. */
@@ -35,8 +36,9 @@ public:
 	/** Stands the MetaHuman this appearance describes on the character, in place of the placeholder figure. */
 	void wear(const Network::FAppearance& appearance);
 
-	/** Films the character from the front for the character sheet, every frame until endPortrait, and returns the picture. */
+	/** Opens the character sheet's isolated portrait and returns its image. */
 	UTextureRenderTarget2D* beginPortrait();
+	void tickPortrait(float deltaSeconds);
 	void endPortrait();
 
 protected:
@@ -117,7 +119,15 @@ private:
 	UPROPERTY()
 	TObjectPtr<UWorldPartitionStreamingSourceComponent> _streaming;
 
-	/** Made on the first character sheet and kept, filming only while a sheet is open. */
+	/** Renders the sheet's model in its own world with fixed lights. */
+	TSharedPtr<FPreviewScene> _portraitScene;
+	TWeakObjectPtr<AActor> _portraitSource;
+	uint8 _portraitWorn = 0;
+	bool _portraitOpen = false;
+
+	UPROPERTY()
+	TObjectPtr<AActor> _portraitBody;
+
 	UPROPERTY()
 	TObjectPtr<USceneCaptureComponent2D> _portraitCapture;
 

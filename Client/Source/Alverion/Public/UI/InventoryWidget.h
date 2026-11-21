@@ -1,20 +1,30 @@
 #pragma once
 
 #include "CommonActivatableWidget.h"
+#include "Components/Image.h"
 #include "CoreMinimal.h"
 
 #include "InventoryWidget.generated.h"
 
-class UImage;
 class UInputAction;
 class UItemSlotWidget;
 class UTextBlock;
 class UUniformGridPanel;
 
+/** Composites the portrait capture over the sheet using its inverse opacity. */
+UCLASS()
+class UCharacterPortraitImage : public UImage
+{
+	GENERATED_BODY()
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+};
+
 /**
  * The character sheet and the bag, opened over the running world by the inventory key and closed by it or Escape.
  * The paperdoll and the bag show what the server says the character carries, and items move between them and onto the action bar by dragging.
- * The figures come from the server's latest UserInfo, and the picture is the character filmed live from the front.
+ * The figures come from the server's latest UserInfo, and the picture shows the character in a separate preview scene.
  */
 UCLASS()
 class ALVERION_API UInventoryWidget : public UCommonActivatableWidget

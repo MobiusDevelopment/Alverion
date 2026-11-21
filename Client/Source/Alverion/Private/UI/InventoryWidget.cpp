@@ -17,6 +17,9 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Rendering/DrawElements.h"
+#include "Slate/SRetainerWidget.h"
+#include "Widgets/Images/SImage.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameServer/WorldFlow.h"
 #include "InputAction.h"
@@ -30,6 +33,23 @@
 
 namespace
 {
+	class SCharacterPortraitImage : public SImage
+	{
+	public:
+		virtual int32 OnPaint(const FPaintArgs& args, const FGeometry& geometry, const FSlateRect& culling, FSlateWindowElementList& elements, int32 layer, const FWidgetStyle& style, bool parentEnabled) const override
+		{
+			const FSlateBrush* brush = GetImageAttribute().Get();
+			if ((brush == nullptr) || (brush->GetResourceObject() == nullptr))
+			{
+				return layer;
+			}
+
+			const FLinearColor tint = GetColorAndOpacityAttribute().Get().GetColor(style) * brush->GetTint(style);
+			FSlateDrawElement::MakeBox(elements, layer, geometry.ToPaintGeometry(), brush, ESlateDrawEffect::InvertAlpha | ESlateDrawEffect::PreMultipliedAlpha, FLinearColor(tint.R, tint.G, tint.B, 1.0f));
+			return layer;
+		}
+	};
+
 	const TCHAR* const sheetInventoryActionPath = TEXT("/Game/Input/Actions/IA_Inventory.IA_Inventory");
 
 	constexpr FLinearColor backdropColor = FLinearColor(0.01f, 0.01f, 0.015f, 0.55f);
@@ -92,6 +112,13 @@ namespace
 
 		return column;
 	}
+}
+
+TSharedRef<SWidget> UCharacterPortraitImage::RebuildWidget()
+{
+	// Invert the capture alpha before the sheet's transition applies its opacity.
+	MyImage = SNew(SCharacterPortraitImage);
+	return SNew(SRetainerWidget).RenderOnPhase(true)[MyImage.ToSharedRef()];
 }
 
 TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
@@ -158,7 +185,7 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 		portraitBox->SetWidthOverride(sheetPortraitWidth);
 		portraitBox->SetHeightOverride(sheetPortraitHeight);
 
-		_portrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		_portrait = WidgetTree->ConstructWidget<UCharacterPortraitImage>(UCharacterPortraitImage::StaticClass());
 		portraitBox->AddChild(_portrait);
 
 		UHorizontalBoxSlot* portraitSlot = paperdoll->AddChildToHorizontalBox(portraitBox);
@@ -375,6 +402,12 @@ void UInventoryWidget::refresh()
 void UInventoryWidget::NativeTick(const FGeometry& geometry, float deltaSeconds)
 {
 	Super::NativeTick(geometry, deltaSeconds);
+
+	AWorldCharacter* character = Cast<AWorldCharacter>(GetOwningPlayerPawn());
+	if (character != nullptr)
+	{
+		character->tickPortrait(deltaSeconds);
+	}
 
 	UGameInstance* gameInstance = GetGameInstance();
 	UServerConnectionSubsystem* link = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;

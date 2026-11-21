@@ -3,12 +3,15 @@
 #include "Appearance/AppearanceApplier.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WorldPartitionStreamingSourceComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Engine/SceneCapture2D.h"
+#include "Engine/StaticMeshActor.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Core/GameSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -17,6 +20,7 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "PreviewScene.h"
 #include "World/DamageNumbersComponent.h"
 #include "World/SceneSetup.h"
 #include "World/Water.h"
@@ -250,6 +254,20 @@ void AWorldCharacter::EndPlay(const EEndPlayReason::Type reason)
 		_metaHuman = nullptr;
 	}
 
+	_portraitOpen = false;
+	_portraitCapture = nullptr;
+	_portraitBody = nullptr;
+	if (_portraitScene.IsValid())
+	{
+		UWorld* studio = _portraitScene->GetWorld();
+		if (studio != nullptr)
+		{
+			studio->EndPlay(reason);
+		}
+
+		_portraitScene.Reset();
+	}
+
 	Super::EndPlay(reason);
 }
 
@@ -325,43 +343,117 @@ void AWorldCharacter::updateViewHeight()
 	const double scale = (_metaHuman != nullptr) ? Appearance::heightScale(*_metaHuman) : 1.0;
 	const double eyeHeight = capsuleHalfHeightCm + (_firstPerson ? firstPersonArmHeightCm : thirdPersonArmHeightCm);
 	_arm->SetRelativeLocation(FVector(0.0, 0.0, eyeHeight * scale - capsuleHalfHeightCm));
-	if (_portraitCapture != nullptr)
-	{
-		_portraitCapture->SetRelativeLocation(FVector(portraitDistanceCm * scale, 0.0, capsuleHalfHeightCm * (scale - 1.0)));
-	}
 }
 
 UTextureRenderTarget2D* AWorldCharacter::beginPortrait()
 {
 	if (_portraitCapture == nullptr)
 	{
+		FPreviewScene::ConstructionValues settings;
+		settings.SetEditor(false);
+		settings.SetTransactional(false);
+		settings.SetForceMipsResident(false);
+		settings.SetCreateDefaultLighting(false);
+		_portraitScene = MakeShared<FPreviewScene>(settings);
+		UWorld* studio = _portraitScene->GetWorld();
+		studio->SetShouldTick(false);
+
+		UDirectionalLightComponent* key = NewObject<UDirectionalLightComponent>(studio);
+		key->SetIntensity(2.8f);
+		key->bTransmission = true;
+		_portraitScene->AddComponent(key, FTransform(FRotator(-28.0, 155.0, 0.0)));
+
+		UDirectionalLightComponent* fill = NewObject<UDirectionalLightComponent>(studio);
+		fill->SetIntensity(1.3f);
+		fill->SetCastShadows(false);
+		_portraitScene->AddComponent(fill, FTransform(FRotator(-10.0, -135.0, 0.0)));
+
+		ASceneCapture2D* camera = studio->SpawnActor<ASceneCapture2D>();
+		if (camera == nullptr)
+		{
+			_portraitScene.Reset();
+			return nullptr;
+		}
+
 		UTextureRenderTarget2D* target = NewObject<UTextureRenderTarget2D>(this);
+		target->ClearColor = FLinearColor::Black;
 		target->InitAutoFormat(portraitWidth, portraitHeight);
 
-		// On the capsule, which turns with the body, so the camera always stands in front of the face looking back at it.
-		_portraitCapture = NewObject<USceneCaptureComponent2D>(this);
-		_portraitCapture->SetupAttachment(RootComponent);
-		_portraitCapture->SetRelativeRotation(FRotator(0.0, 180.0, 0.0));
-		updateViewHeight();
+		studio->SetBegunPlay(true);
+		_portraitCapture = camera->GetCaptureComponent2D();
+		_portraitCapture->SetWorldRotation(FRotator(0.0, 180.0, 0.0));
 		_portraitCapture->FOVAngle = portraitFieldOfView;
-		_portraitCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
+		_portraitCapture->CaptureSource = SCS_SceneColorHDR;
 		_portraitCapture->TextureTarget = target;
 		_portraitCapture->bCaptureEveryFrame = false;
 		_portraitCapture->bCaptureOnMovement = false;
-		_portraitCapture->RegisterComponent();
+		_portraitCapture->bAlwaysPersistRenderingState = true;
+		_portraitCapture->ShowFlags.SetEyeAdaptation(false);
 	}
 
-	_portraitCapture->bCaptureEveryFrame = true;
+	_portraitOpen = true;
 	return _portraitCapture->TextureTarget;
+}
+
+void AWorldCharacter::tickPortrait(float deltaSeconds)
+{
+	if (!_portraitOpen || !_portraitScene.IsValid() || (_portraitCapture == nullptr))
+	{
+		return;
+	}
+
+	UWorld* studio = _portraitScene->GetWorld();
+	if ((_portraitBody == nullptr) || (_portraitSource.Get() != _metaHuman.Get()))
+	{
+		if (_portraitBody != nullptr)
+		{
+			_portraitBody->Destroy();
+			_portraitBody = nullptr;
+		}
+
+		_portraitSource = _metaHuman.Get();
+		double scale = 1.0;
+		if (_metaHuman != nullptr)
+		{
+			_portraitBody = studio->SpawnActor<AActor>(_metaHuman->GetClass(), FVector::ZeroVector, FRotator(0.0, -90.0, 0.0));
+			if (_portraitBody != nullptr)
+			{
+				_portraitBody->SetActorEnableCollision(false);
+				Appearance::apply(*_portraitBody, _appearance, _dressedWorn);
+				Appearance::animate(*_portraitBody, Appearance::EMotion::Idle, 0.0f);
+				_portraitWorn = _dressedWorn;
+				scale = Appearance::heightScale(*_portraitBody);
+			}
+		}
+		else
+		{
+			AStaticMeshActor* placeholder = studio->SpawnActor<AStaticMeshActor>(FVector(0.0, 0.0, capsuleHalfHeightCm), FRotator::ZeroRotator);
+			if (placeholder != nullptr)
+			{
+				UStaticMeshComponent* mesh = placeholder->GetStaticMeshComponent();
+				mesh->SetMobility(EComponentMobility::Movable);
+				SceneSetup::paintPlaceholderBody(*mesh, ownBodyColor);
+				_portraitBody = placeholder;
+			}
+		}
+
+		_portraitCapture->SetWorldLocation(FVector(portraitDistanceCm * scale, 0.0, capsuleHalfHeightCm * scale));
+	}
+
+	if ((_portraitBody != nullptr) && (_metaHuman != nullptr) && (_portraitWorn != _dressedWorn))
+	{
+		Appearance::dressStarter(*_portraitBody, _appearance, FString(), false, _dressedWorn);
+		_portraitWorn = _dressedWorn;
+	}
+
+	// Deferred captures wait until their world is drawn. The sheet draws only the captured image.
+	studio->Tick(LEVELTICK_All, deltaSeconds);
+	_portraitCapture->CaptureScene();
 }
 
 void AWorldCharacter::endPortrait()
 {
-	// Filming the whole scene again is a second view's cost, so it stops the moment nobody looks at the picture.
-	if (_portraitCapture != nullptr)
-	{
-		_portraitCapture->bCaptureEveryFrame = false;
-	}
+	_portraitOpen = false;
 }
 
 void AWorldCharacter::PawnClientRestart()
