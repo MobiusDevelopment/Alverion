@@ -2,11 +2,13 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
+#include "Components/ScrollBox.h"
 #include "Components/TextBlock.h"
 #include "CoreMinimal.h"
 #include "Fonts/CompositeFont.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Styling/CoreStyle.h"
+#include "Brushes/SlateNoResource.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
 
@@ -216,6 +218,44 @@ namespace UIStyle
 		brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
 
 		return brush;
+	}
+
+	inline constexpr float SCROLLBAR_THICKNESS = 14.0f;
+
+	inline FSlateBrush scrollbarBrush(const FLinearColor& fill, const FLinearColor& edge)
+	{
+		FSlateBrush brush = stateBrush(fill, edge, 4.0f);
+		brush.ImageSize = FVector2f(SCROLLBAR_THICKNESS, SCROLLBAR_THICKNESS);
+		brush.OutlineSettings.Width = 1.0f;
+		return brush;
+	}
+
+	inline FScrollBarStyle scrollbarStyle()
+	{
+		const FSlateBrush track = scrollbarBrush(FLinearColor(0.025f, 0.015f, 0.010f, 1.0f), outline);
+		const FSlateNoResource hidden;
+
+		// The invisible slots must also reserve zero space, or they make the track wider than its thumb.
+		FScrollBarStyle style;
+		style.SetHorizontalBackgroundImage(track);
+		style.SetVerticalBackgroundImage(track);
+		style.SetVerticalTopSlotImage(hidden);
+		style.SetHorizontalTopSlotImage(hidden);
+		style.SetVerticalBottomSlotImage(hidden);
+		style.SetHorizontalBottomSlotImage(hidden);
+		style.SetNormalThumbImage(scrollbarBrush(FLinearColor(0.29f, 0.16f, 0.075f, 1.0f), outlineHovered));
+		style.SetHoveredThumbImage(scrollbarBrush(outline, outlineHovered));
+		style.SetDraggedThumbImage(scrollbarBrush(outlineHovered, labelColor));
+		style.SetThickness(SCROLLBAR_THICKNESS);
+		return style;
+	}
+
+	inline UScrollBox* makeScrollBox(UWidgetTree& tree)
+	{
+		UScrollBox* scroll = tree.ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
+		scroll->SetWidgetBarStyle(scrollbarStyle());
+		scroll->SetScrollbarThickness(FVector2D(SCROLLBAR_THICKNESS, SCROLLBAR_THICKNESS));
+		return scroll;
 	}
 
 	// The screens standing in front of the 3D scene share these.

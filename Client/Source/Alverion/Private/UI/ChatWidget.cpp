@@ -69,7 +69,7 @@ TSharedRef<SWidget> UChatWidget::RebuildWidget()
 		logPanel->SetPadding(FMargin(8.0f, 6.0f));
 		logBox->AddChild(logPanel);
 
-		_log = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
+		_log = UIStyle::makeScrollBox(*WidgetTree);
 		_log->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 		logPanel->SetContent(_log);
 

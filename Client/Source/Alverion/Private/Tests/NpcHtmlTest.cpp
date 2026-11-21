@@ -208,6 +208,11 @@ bool FNpcDialogLayoutTest::RunTest(const FString& parameters)
 		return false;
 	}
 
+	TestEqual(TEXT("The dialogue scrollbar has a wide drag area"), content->GetScrollbarThickness(), FVector2D(14.0, 14.0));
+	const FScrollBarStyle& scrollbar = content->GetWidgetBarStyle();
+	TestEqual(TEXT("The dialogue scrollbar uses the rounded track"), scrollbar.VerticalBackgroundImage.DrawAs.GetValue(), ESlateBrushDrawType::RoundedBox);
+	TestEqual(TEXT("The dialogue scrollbar uses the rounded thumb"), scrollbar.NormalThumbImage.DrawAs.GetValue(), ESlateBrushDrawType::RoundedBox);
+
 	if (TestEqual(TEXT("The scrolling page keeps both paragraphs, their gap and both choices"), content->GetChildrenCount(), 5))
 	{
 		const UTextBlock* greeting = Cast<UTextBlock>(content->GetChildAt(0));

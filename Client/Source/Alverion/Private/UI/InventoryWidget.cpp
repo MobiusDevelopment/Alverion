@@ -250,7 +250,7 @@ TSharedRef<SWidget> UInventoryWidget::RebuildWidget()
 		USizeBox* bagView = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 		bagView->SetHeightOverride(bagVisibleRows * (bagSlotSize + bagSlotGap));
 
-		UScrollBox* scroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
+		UScrollBox* scroll = UIStyle::makeScrollBox(*WidgetTree);
 		bagView->AddChild(scroll);
 
 		_bagGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass());

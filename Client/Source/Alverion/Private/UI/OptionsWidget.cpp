@@ -225,6 +225,7 @@ namespace
 		// which is assign the member before RebuildWidget reads it.
 		PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		combo->ForegroundColor = FSlateColor(labelColor);
+		combo->ScrollBarStyle = UIStyle::scrollbarStyle();
 		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 		return combo;
@@ -244,52 +245,10 @@ namespace
 		return slider;
 	}
 
-	FSlateBrush scrollThumbBrush(const FLinearColor& fill)
-	{
-		FSlateBrush brush;
-		brush.DrawAs = ESlateBrushDrawType::RoundedBox;
-		brush.TintColor = FSlateColor(fill);
-		brush.OutlineSettings.CornerRadii = FVector4(4.0f, 4.0f, 4.0f, 4.0f);
-		brush.OutlineSettings.Color = FSlateColor(keyOutline);
-		brush.OutlineSettings.Width = 1.0f;
-		brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
-
-		return brush;
-	}
-
-	// The scrollbar all four pages share: invisible track, rounded thumb in the key buttons' browns.
-	FScrollBarStyle scrollBarStyle()
-	{
-		FSlateBrush track;
-		track.TintColor = FSlateColor(FLinearColor::Transparent);
-
-		// NoDrawType stops the arrow slots painting but not the 32 by 32 they reserve by default,
-		// and a vertical scrollbar is as wide as its widest part, so the bar came out five times its thickness.
-		FSlateBrush hidden;
-		hidden.TintColor = FSlateColor(FLinearColor::Transparent);
-		hidden.DrawAs = ESlateBrushDrawType::NoDrawType;
-		hidden.ImageSize = FVector2f::ZeroVector;
-
-		FScrollBarStyle style;
-		style.SetHorizontalBackgroundImage(track);
-		style.SetVerticalBackgroundImage(track);
-		style.SetVerticalTopSlotImage(hidden);
-		style.SetHorizontalTopSlotImage(hidden);
-		style.SetVerticalBottomSlotImage(hidden);
-		style.SetHorizontalBottomSlotImage(hidden);
-		style.SetNormalThumbImage(scrollThumbBrush(keyFillHovered));
-		style.SetHoveredThumbImage(scrollThumbBrush(FLinearColor(0.3f, 0.18f, 0.09f, 1.0f)));
-		style.SetDraggedThumbImage(scrollThumbBrush(keyOutline));
-
-		return style;
-	}
-
 	// One page of the category switcher: a styled scroll box around a vertical list.
 	UVerticalBox* addScrollPage(UWidgetTree& tree, UWidgetSwitcher& switcher)
 	{
-		UScrollBox* scroll = tree.ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
-		scroll->SetWidgetBarStyle(scrollBarStyle());
-		scroll->SetScrollbarThickness(FVector2D(6.0f, 6.0f));
+		UScrollBox* scroll = UIStyle::makeScrollBox(tree);
 		scroll->SetScrollbarPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
 		scroll->SetAllowOverscroll(false);
 

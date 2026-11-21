@@ -42,7 +42,7 @@ namespace
 
 	constexpr float NPC_DIALOG_WIDTH = 420.0f;
 	constexpr float NPC_DIALOG_HEIGHT = 540.0f;
-	constexpr float NPC_DIALOG_PAGE_WIDTH = 360.0f;
+	constexpr float NPC_DIALOG_PAGE_WIDTH = 352.0f;
 	constexpr float NPC_DIALOG_INSET = 8.0f;
 	constexpr float npcDialogRadius = 8.0f;
 	constexpr float npcDialogCloseSize = 40.0f;
@@ -179,8 +179,7 @@ TSharedRef<SWidget> UNpcDialogWidget::RebuildWidget()
 		pageSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 		pageSlot->SetPadding(FMargin(0.0f, NPC_DIALOG_INSET, 0.0f, 0.0f));
 
-		_content = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
-		_content->SetScrollbarThickness(FVector2D(6.0f, 6.0f));
+		_content = UIStyle::makeScrollBox(*WidgetTree);
 		_content->SetScrollbarPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
 		_content->SetScrollWhenFocusChanges(EScrollWhenFocusChanges::InstantScroll);
 		page->SetContent(_content);
@@ -356,6 +355,7 @@ UWidget* UNpcDialogWidget::makeElement(const NpcHtml::FRun& run)
 		FTextBlockStyle style;
 		style.SetFont(UIStyle::font(npcDialogFontSize));
 		edit->SetTextStyle(style);
+		edit->WidgetStyle.SetScrollBarStyle(UIStyle::scrollbarStyle());
 		box->SetHeightOverride((run.height > 0.0f) ? FMath::Max(run.height, npcDialogMultiLineMinHeight) : npcDialogMultiLineHeight);
 		field = edit;
 	}
@@ -366,6 +366,7 @@ UWidget* UNpcDialogWidget::makeElement(const NpcHtml::FRun& run)
 		// The list's font is only a property, which the engine marks deprecated for direct access but offers no other way to set after construction.
 		PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		list->Font = UIStyle::font(npcDialogFontSize);
+		list->ScrollBarStyle = UIStyle::scrollbarStyle();
 		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		for (const FString& option : run.options)
 		{

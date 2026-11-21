@@ -88,7 +88,7 @@ TSharedRef<SWidget> UServerSelectWidget::RebuildWidget()
 		// Scrollable, because the number of servers is the operator's decision and not ours.
 		// Eighty of them used to run off the top and bottom of the screen with no way to reach
 		// the ones in between, which is a list that lies about what it is offering.
-		UScrollBox* scroller = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
+		UScrollBox* scroller = UIStyle::makeScrollBox(*WidgetTree);
 		scroller->AddChild(_rows);
 
 		USizeBox* panel = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
