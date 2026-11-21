@@ -48,6 +48,16 @@ struct FFootIkAnimInstanceProxy : public FAnimSingleNodeInstanceProxy
 	TWeakObjectPtr<USkeletalMesh> soleMesh;
 	int32 soleLod = INDEX_NONE;
 	TWeakObjectPtr<USkeletalMesh> unavailableSoleMesh;
+
+private:
+	friend class UFootIkAnimInstance;
+
+	void blendPose(FPoseContext& output) const;
+
+	TArray<FTransform> _blendSource;
+	float _blendDuration = 0.0f;
+	float _blendElapsed = 0.0f;
+	bool _hasEvaluatedPose = false;
 };
 
 /**
@@ -60,6 +70,8 @@ class ALVERION_API UFootIkAnimInstance : public UAnimSingleNodeInstance
 	GENERATED_BODY()
 
 public:
+	virtual void SetAnimationAsset(UAnimationAsset* asset, bool looping = true, float playRate = 1.0f) override;
+
 	bool grounded = false;
 	bool plantFeet = false;
 
@@ -74,6 +86,7 @@ public:
 
 
 protected:
+	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float deltaSeconds) override;
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
 };

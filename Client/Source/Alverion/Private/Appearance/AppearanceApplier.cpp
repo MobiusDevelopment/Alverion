@@ -21,6 +21,7 @@
 #include "GroomBindingAsset.h"
 #include "GroomComponent.h"
 #include "Items/ItemCatalog.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/CommandLine.h"
 #include "Misc/MemStack.h"
@@ -813,6 +814,7 @@ namespace
 	// The starter sword's component, and the tag it carries while held ready, so dressing the body again keeps it in the hand.
 	const TCHAR* const appearanceWeaponName = TEXT("StarterWoodenSword");
 	const FName appearanceWeaponReadyTag(TEXT("AlverionWeaponReady"));
+	constexpr float WEAPON_BLEND_SECONDS = 0.12f;
 
 	/**
 	 * Where the starter sword sits on a body, as a bone and a transform relative to it, both read off the reference pose: carried at the left hip, or held ready in the right hand.
@@ -881,21 +883,25 @@ namespace
 			return false;
 		}
 
+		const bool placeWeapon = (weapon == nullptr) || (weapon->GetAttachParent() != &body) || (weapon->GetAttachSocketName() != bone);
 		if (weapon == nullptr)
 		{
 			weapon = NewObject<UStaticMeshComponent>(&avatar, weaponName);
 			avatar.AddInstanceComponent(weapon);
 			weapon->SetupAttachment(&body, bone);
 		}
-
-		if ((weapon->GetAttachParent() != &body) || (weapon->GetAttachSocketName() != bone))
+		else if (placeWeapon)
 		{
 			weapon->AttachToComponent(&body, FAttachmentTransformRules::KeepRelativeTransform, bone);
 		}
 
 		weapon->SetStaticMesh(sword);
 		weapon->SetAbsolute(false, false, true);
-		weapon->SetRelativeTransform(relative);
+		if (placeWeapon)
+		{
+			weapon->SetRelativeTransform(relative);
+		}
+
 		weapon->SetWorldScale3D(FVector(Appearance::heightScale(avatar)));
 		weapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		weapon->SetVisibility(visible);
@@ -1186,17 +1192,6 @@ namespace Appearance
 		{
 			player->SetAnimationAsset(clip, true);
 			player->SetPlaying(true);
-
-			// Single-node clip changes jump the pose, so cloth discards its previous collision history.
-			TInlineComponentArray<USkeletalMeshComponent*> garments;
-			body.GetComponents(garments);
-			for (USkeletalMeshComponent* garment : garments)
-			{
-				if (garment->ComponentHasTag(starterGarmentTag))
-				{
-					garment->ForceClothNextUpdateTeleportAndReset();
-				}
-			}
 		}
 
 		// The rate changes the pace and never the phase, so it is set on its own and the clip is not started over.
@@ -1678,16 +1673,6 @@ namespace Appearance
 		player->plantFeet = false;
 		player->fallen = (action == EAction::Fall);
 		player->actionEndSeconds = now + clip->GetPlayLength();
-
-		TInlineComponentArray<USkeletalMeshComponent*> garments;
-		body.GetComponents(garments);
-		for (USkeletalMeshComponent* garment : garments)
-		{
-			if (garment->ComponentHasTag(starterGarmentTag))
-			{
-				garment->ForceClothNextUpdateTeleportAndReset();
-			}
-		}
 	}
 
 	void standUp(AActor& body)
@@ -1713,6 +1698,17 @@ namespace Appearance
 			return;
 		}
 
+		if ((weapon->GetAttachParent() == mesh) && (weapon->GetAttachSocketName() == bone))
+		{
+			return;
+		}
+
+		// Keep the visible pose when changing sockets, including halfway through the opposite move.
+		if (!weapon->AttachToComponent(mesh, FAttachmentTransformRules::KeepWorldTransform, bone))
+		{
+			return;
+		}
+
 		if (ready)
 		{
 			weapon->ComponentTags.AddUnique(appearanceWeaponReadyTag);
@@ -1722,9 +1718,10 @@ namespace Appearance
 			weapon->ComponentTags.Remove(appearanceWeaponReadyTag);
 		}
 
-		weapon->AttachToComponent(mesh, FAttachmentTransformRules::KeepRelativeTransform, bone);
-		weapon->SetRelativeTransform(relative);
 		weapon->SetWorldScale3D(FVector(heightScale(body)));
+		FLatentActionInfo move;
+		move.CallbackTarget = weapon;
+		UKismetSystemLibrary::MoveComponentTo(weapon, relative.GetLocation(), relative.Rotator(), true, true, WEAPON_BLEND_SECONDS, true, EMoveComponentAction::Move, move);
 	}
 
 	void armWithSword(AActor& body)

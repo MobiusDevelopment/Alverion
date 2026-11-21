@@ -10,6 +10,9 @@
 
 namespace
 {
+	constexpr float MOTION_BLEND_SECONDS = 0.14f;
+	constexpr float ACTION_BLEND_SECONDS = 0.08f;
+
 	// How far above and below the body's feet a foot looks for ground.
 	constexpr double footIkReachCm = 45.0;
 
@@ -39,6 +42,7 @@ FFootIkAnimInstanceProxy::FFootIkAnimInstanceProxy(UAnimInstance* instance)
 bool FFootIkAnimInstanceProxy::Evaluate(FPoseContext& output)
 {
 	FAnimSingleNodeInstanceProxy::Evaluate(output);
+	_hasEvaluatedPose = true;
 
 	if (!FMath::IsNearlyEqual(headScale, 1.0f))
 	{
@@ -64,6 +68,7 @@ bool FFootIkAnimInstanceProxy::Evaluate(FPoseContext& output)
 	const FCompactPoseBoneIndex pelvis = footIkBone(bones, pelvisName);
 	if ((!plantFeet && !fallen && level && FMath::IsNearlyZero(lift)) || !pelvis.IsValid())
 	{
+		blendPose(output);
 		return true;
 	}
 
@@ -145,7 +150,53 @@ bool FFootIkAnimInstanceProxy::Evaluate(FPoseContext& output)
 	}
 
 	FCSPose<FCompactPose>::ConvertComponentPosesToLocalPoses(MoveTemp(pose), output.Pose);
+	blendPose(output);
 	return true;
+}
+
+void FFootIkAnimInstanceProxy::blendPose(FPoseContext& output) const
+{
+	if (_blendSource.IsEmpty())
+	{
+		return;
+	}
+
+	// Mesh bone indices stay the same when the level of detail changes.
+	const TArray<FBoneIndexType>& meshBones = output.Pose.GetBoneContainer().GetBoneIndicesArray();
+	const float sourceWeight = 1.0f - FMath::SmoothStep(0.0f, _blendDuration, _blendElapsed);
+	for (const FCompactPoseBoneIndex bone : output.Pose.ForEachBoneIndex())
+	{
+		const int32 meshBone = meshBones[bone.GetInt()];
+		if (_blendSource.IsValidIndex(meshBone))
+		{
+			output.Pose[bone].BlendWith(_blendSource[meshBone], sourceWeight);
+		}
+	}
+}
+
+void UFootIkAnimInstance::SetAnimationAsset(UAnimationAsset* asset, bool looping, float playRate)
+{
+	FFootIkAnimInstanceProxy& proxy = GetProxyOnGameThread<FFootIkAnimInstanceProxy>();
+	proxy._blendSource.Reset();
+	USkeletalMeshComponent* mesh = GetSkelMeshComponent();
+	if ((asset != nullptr) && (mesh != nullptr) && proxy._hasEvaluatedPose && (GetAnimationAsset() != nullptr))
+	{
+		// The mesh holds the last evaluated pose, including foot placement and any interrupted blend.
+		const TArrayView<const FTransform> visiblePose = mesh->GetBoneSpaceTransformsView();
+		proxy._blendSource.Append(visiblePose.GetData(), visiblePose.Num());
+		proxy._blendDuration = looping ? MOTION_BLEND_SECONDS : ACTION_BLEND_SECONDS;
+		proxy._blendElapsed = 0.0f;
+	}
+
+	Super::SetAnimationAsset(asset, looping, playRate);
+}
+
+void UFootIkAnimInstance::NativeInitializeAnimation()
+{
+	FFootIkAnimInstanceProxy& proxy = GetProxyOnGameThread<FFootIkAnimInstanceProxy>();
+	proxy._blendSource.Reset();
+	proxy._hasEvaluatedPose = false;
+	Super::NativeInitializeAnimation();
 }
 
 FAnimInstanceProxy* UFootIkAnimInstance::CreateAnimInstanceProxy()
@@ -160,6 +211,14 @@ void UFootIkAnimInstance::NativeUpdateAnimation(float deltaSeconds)
 	shaping.lift = lift;
 	shaping.headScale = 1.0f;
 	shaping.fallen = fallen;
+	if (!shaping._blendSource.IsEmpty())
+	{
+		shaping._blendElapsed += deltaSeconds;
+		if (shaping._blendElapsed >= shaping._blendDuration)
+		{
+			shaping._blendSource.Reset();
+		}
+	}
 
 	const USkeletalMeshComponent* mesh = GetSkelMeshComponent();
 	const UWorld* world = GetWorld();
@@ -249,7 +308,7 @@ void UFootIkAnimInstance::NativeUpdateAnimation(float deltaSeconds)
 	query.AddIgnoredActor(mesh->GetOwner()->GetAttachParentActor());
 
 	// Traced where each foot stood last frame; the height only matters under it, so last frame's place is close enough.
-	// Applied at once, with no easing: the clip itself switches at once between standing and running, so the legs change with it.
+	// The pose blend carries the old foot placement into the next clip.
 	static const FName footNames[2] = { TEXT("foot_l"), TEXT("foot_r") };
 	FFootIkAnimInstanceProxy& proxy = GetProxyOnGameThread<FFootIkAnimInstanceProxy>();
 	const FTransform& frame = mesh->GetComponentTransform();
