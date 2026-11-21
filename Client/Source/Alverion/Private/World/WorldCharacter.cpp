@@ -360,6 +360,7 @@ UTextureRenderTarget2D* AWorldCharacter::beginPortrait()
 
 		UDirectionalLightComponent* key = NewObject<UDirectionalLightComponent>(studio);
 		key->SetIntensity(2.8f);
+		key->SetCastShadows(false);
 		key->bTransmission = true;
 		_portraitScene->AddComponent(key, FTransform(FRotator(-28.0, 155.0, 0.0)));
 

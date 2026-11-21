@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Appearance/AppearanceApplier.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/Engine.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -52,6 +53,14 @@ bool FCharacterPortraitTest::RunTest(const FString& parameters)
 	{
 		TestTrue(TEXT("The camera lives in a separate world"), capture->GetWorld() != world);
 		TestEqual(TEXT("The portrait capture carries inverse opacity"), capture->CaptureSource.GetValue(), SCS_SceneColorHDR);
+
+		for (TObjectIterator<UDirectionalLightComponent> light; light; ++light)
+		{
+			if (light->GetWorld() == capture->GetWorld())
+			{
+				TestFalse(TEXT("The portrait lights do not cast shadows across the face"), light->CastShadows);
+			}
+		}
 	}
 
 	ON_SCOPE_EXIT

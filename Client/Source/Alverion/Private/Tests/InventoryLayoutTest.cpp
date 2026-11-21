@@ -1,7 +1,12 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Blueprint/WidgetTree.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Misc/AutomationTest.h"
 #include "UI/InventoryLayout.h"
+#include "UI/InventoryWidget.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FInventoryLayoutTest, "Alverion.UI.InventoryLayout", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -61,6 +66,48 @@ bool FInventoryLayoutTest::RunTest(const FString& parameters)
 	TestEqual(TEXT("The right finger alone"), InventoryLayout::unequipMask(13), 0x10);
 	TestEqual(TEXT("The left ear alone"), InventoryLayout::unequipMask(9), 0x04);
 	TestEqual(TEXT("A place the screen has no slot for"), InventoryLayout::unequipMask(24), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FInventoryEquipmentAlignmentTest, "Alverion.UI.InventoryEquipmentAlignment", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FInventoryEquipmentAlignmentTest::RunTest(const FString& parameters)
+{
+	UInventoryWidget* inventory = NewObject<UInventoryWidget>();
+	inventory->Initialize();
+	const TSharedRef<SWidget> widget = inventory->TakeWidget();
+	widget->SlatePrepass(1.0f);
+
+	UCharacterPortraitImage* portrait = nullptr;
+	inventory->WidgetTree->ForEachWidget([&portrait](UWidget* child)
+	{
+		if (UCharacterPortraitImage* image = Cast<UCharacterPortraitImage>(child))
+		{
+			portrait = image;
+		}
+	});
+	if (!TestNotNull(TEXT("The character sheet contains a portrait"), portrait))
+	{
+		return false;
+	}
+
+	const UPanelWidget* frame = portrait->GetParent();
+	const UHorizontalBox* equipment = (frame != nullptr) ? Cast<UHorizontalBox>(frame->GetParent()) : nullptr;
+	if (!TestNotNull(TEXT("The portrait is in the equipment row"), equipment))
+	{
+		return false;
+	}
+
+	const UVerticalBoxSlot* equipmentSlot = CastChecked<UVerticalBoxSlot>(equipment->Slot);
+	TestEqual(TEXT("The equipment row is centred in the character sheet"), equipmentSlot->GetHorizontalAlignment(), HAlign_Center);
+	if (TestEqual(TEXT("The portrait has a column of equipment on each side"), equipment->GetChildrenCount(), 3))
+	{
+		const UHorizontalBoxSlot* left = CastChecked<UHorizontalBoxSlot>(equipment->GetChildAt(0)->Slot);
+		const UHorizontalBoxSlot* right = CastChecked<UHorizontalBoxSlot>(equipment->GetChildAt(2)->Slot);
+		TestEqual(TEXT("The left slots are centred beside the portrait"), left->GetVerticalAlignment(), VAlign_Center);
+		TestEqual(TEXT("The right slots are centred beside the portrait"), right->GetVerticalAlignment(), VAlign_Center);
+	}
+
 	return true;
 }
 
