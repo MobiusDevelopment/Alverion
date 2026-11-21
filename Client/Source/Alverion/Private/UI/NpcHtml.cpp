@@ -323,20 +323,6 @@ namespace
 			}
 
 			endLine(false);
-
-			// The page's own first and last blank lines are only the padding its text sits in.
-			while ((_document.lines.Num() > 0) && _document.lines.Last().runs.IsEmpty())
-			{
-				_document.lines.Pop();
-			}
-
-			int32 leading = 0;
-			while ((leading < _document.lines.Num()) && _document.lines[leading].runs.IsEmpty())
-			{
-				leading++;
-			}
-
-			_document.lines.RemoveAt(0, leading);
 			return _document;
 		}
 
@@ -373,7 +359,10 @@ namespace
 			}
 			else if (isLineBreak(name))
 			{
-				endLine(true);
+				if (!_hidden && !_inTitle)
+				{
+					endLine(true);
+				}
 			}
 			else if ((name == TEXT("p")) || (name == TEXT("hr")) || (name == TEXT("table")) || (name == TEXT("tr")) || (name == TEXT("div")))
 			{

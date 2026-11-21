@@ -76,7 +76,7 @@ namespace NpcHtml
 		/** The page's title, empty when it has none. It is not part of the lines. */
 		FString title;
 
-		/** An empty line is a deliberate gap, such as the one two line breaks in a row leave. The page's first and last lines are never empty. */
+		/** An empty line is a deliberate gap, including at the start or end of the page. */
 		TArray<FLine> lines;
 	};
 

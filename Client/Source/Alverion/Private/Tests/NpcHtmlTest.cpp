@@ -3,6 +3,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
+#include "Components/ScrollBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Misc/AutomationTest.h"
@@ -161,7 +162,15 @@ bool FNpcHtmlTest::RunTest(const FString& parameters)
 		TestEqual(TEXT("The tutorial link command"), tutorial.lines[3].runs[0].linkTarget, FString(TEXT("FDDF8E98")));
 	}
 
-	TestEqual(TEXT("An empty page has no lines"), NpcHtml::parse(TEXT("<html><body><br> </body></html>")).lines.Num(), 0);
+	TestEqual(TEXT("A page with only HTML whitespace has no lines"), NpcHtml::parse(TEXT("<html><body> \r\n </body></html>")).lines.Num(), 0);
+	TestEqual(TEXT("A page with only a break keeps its blank line"), NpcHtml::parse(TEXT("<html><body><br> </body></html>")).lines.Num(), 1);
+	const NpcHtml::FDocument padded = NpcHtml::parse(TEXT("<html><body><script>\"<br>\"</script><br>First<br><br>Last<br><br></body></html>"));
+	if (TestEqual(TEXT("Explicit blank lines survive at both edges and between lines"), padded.lines.Num(), 5))
+	{
+		TestTrue(TEXT("The leading blank line survives"), padded.lines[0].runs.IsEmpty());
+		TestTrue(TEXT("The middle blank line survives"), padded.lines[2].runs.IsEmpty());
+		TestTrue(TEXT("The trailing blank line survives"), padded.lines[4].runs.IsEmpty());
+	}
 	return true;
 }
 
@@ -218,6 +227,8 @@ bool FNpcDialogLayoutTest::RunTest(const FString& parameters)
 	if (TestNotNull(TEXT("The explicit title leaves the first body line in place"), first))
 	{
 		TestEqual(TEXT("The first body line retains its punctuation"), first->GetText().ToString(), FString(TEXT("Destination:")));
+		const UScrollBoxSlot* lineSlot = CastChecked<UScrollBoxSlot>(first->Slot);
+		TestTrue(TEXT("An authored break is spaced apart from ordinary wrapping"), lineSlot->GetPadding().Bottom > 0.0f);
 	}
 
 	FString longPage = TEXT("<html><head><title>Guard</title></head><body>");

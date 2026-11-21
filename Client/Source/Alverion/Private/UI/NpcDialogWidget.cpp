@@ -47,6 +47,7 @@ namespace
 	constexpr float npcDialogRadius = 8.0f;
 	constexpr float npcDialogCloseSize = 40.0f;
 	constexpr float npcDialogLineGap = 12.0f;
+	constexpr float NPC_DIALOG_ROW_SPACING = 6.0f;
 	constexpr float npcDialogLinkRadius = 6.0f;
 	constexpr int32 npcDialogFontSize = 18;
 	constexpr int32 npcDialogTitleFontSize = 24;
@@ -250,7 +251,8 @@ void UNpcDialogWidget::addLine(const NpcHtml::FLine& line)
 		label->SetAutoWrapText(true);
 		label->SetLineHeightPercentage(1.16f);
 		label->SetJustification(line.centered ? ETextJustify::Center : ETextJustify::Left);
-		_content->AddChild(label);
+		UScrollBoxSlot* slot = CastChecked<UScrollBoxSlot>(_content->AddChild(label));
+		slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, NPC_DIALOG_ROW_SPACING));
 		return;
 	}
 
@@ -294,7 +296,8 @@ void UNpcDialogWidget::addLine(const NpcHtml::FLine& line)
 		}
 	}
 
-	_content->AddChild(row);
+	UScrollBoxSlot* slot = CastChecked<UScrollBoxSlot>(_content->AddChild(row));
+	slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, NPC_DIALOG_ROW_SPACING));
 }
 
 UButton* UNpcDialogWidget::makeLinkButton(const NpcHtml::FRun& run)
