@@ -378,6 +378,9 @@ bool FOrcPlayerCreationTest::RunTest(const FString& parameters)
 				return false;
 			}
 
+			// A new clip cross-fades from the old pose as time passes, and the samples below pass none, so a second of it finishes the fade first.
+			body->TickAnimation(1.0f, false);
+
 			double lowestFoot = MAX_dbl;
 			double highestFoot = -MAX_dbl;
 			for (int32 frame = 0; frame <= 8; ++frame)

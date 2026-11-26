@@ -423,6 +423,10 @@ bool FDwarfAppearanceTest::RunTest(const FString& parameters)
 			Appearance::animate(*standing, motion, running ? 300.0f : 0.0f);
 		}
 
+		// A new clip cross-fades from the old pose as time passes, and the samples below pass none, so a second of it finishes the fade first.
+		body->TickAnimation(1.0f, false);
+		donorMesh->TickAnimation(1.0f, false);
+
 		UAnimSingleNodeInstance* clip = body->GetSingleNodeInstance();
 		if (!TestNotNull(TEXT("The dwarf plays a clip"), clip))
 		{

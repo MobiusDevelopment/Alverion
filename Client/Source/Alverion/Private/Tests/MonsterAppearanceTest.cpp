@@ -110,6 +110,9 @@ bool FMonsterAppearanceTest::RunTest(const FString& parameters)
 				return false;
 			}
 
+			// A new clip cross-fades from the old pose as time passes, and the samples below pass none, so a second of it finishes the fade first.
+			mesh->TickAnimation(1.0f, false);
+
 			const FTransform& transform = mesh->GetComponentTransform();
 			const FVector3f floorNormal(transform.InverseTransformVectorNoScale(terrain->GetActorUpVector()));
 			const FVector3f floorPoint(transform.InverseTransformPosition(terrain->GetActorLocation() + terrain->GetActorUpVector() * 10.0));
