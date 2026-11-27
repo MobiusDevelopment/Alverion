@@ -1163,8 +1163,24 @@ namespace Appearance
 			return;
 		}
 
-		// A strike, a flinch or a fall plays out before the body goes back to moving.
 		const UWorld* world = body.GetWorld();
+
+		// Starting to move during a standing strike carries the rest of it on from the spine up, so the legs walk at once.
+		const bool movingMotion = (motion == EMotion::Run) || (motion == EMotion::Walk) || (motion == EMotion::GoblinRun);
+		player->moving = movingMotion;
+		if (movingMotion && player->strikeAction && !player->fallen && (world != nullptr) && (world->GetTimeSeconds() < player->actionEndSeconds))
+		{
+			UAnimSequenceBase* strikeClip = Cast<UAnimSequenceBase>(player->GetAnimationAsset());
+			if (strikeClip != nullptr)
+			{
+				player->playUpperBody(strikeClip, player->GetCurrentTime());
+				player->upperBodyEndSeconds = player->actionEndSeconds;
+			}
+
+			player->actionEndSeconds = 0.0;
+		}
+
+		// A flinch or a fall, or a strike standing, plays out before the body goes back to moving.
 		if (player->fallen || ((world != nullptr) && (world->GetTimeSeconds() < player->actionEndSeconds)))
 		{
 			return;
@@ -1615,12 +1631,14 @@ namespace Appearance
 		const UWorld* world = body.GetWorld();
 		const USkeletalMeshComponent* mesh = findMesh(body, TEXT("Body"));
 		const UFootIkAnimInstance* player = (mesh != nullptr) ? Cast<UFootIkAnimInstance>(mesh->GetAnimInstance()) : nullptr;
-		if ((player == nullptr) || !player->strikeAction || (world == nullptr))
+		if ((player == nullptr) || (world == nullptr))
 		{
 			return false;
 		}
 
-		return world->GetTimeSeconds() < player->actionEndSeconds;
+		// A strike plays on the whole body standing, or from the spine up while moving.
+		const double now = world->GetTimeSeconds();
+		return (player->strikeAction && (now < player->actionEndSeconds)) || (now < player->upperBodyEndSeconds);
 	}
 
 	bool perform(AActor& body, EAction action, int32 variant)
@@ -1662,6 +1680,11 @@ namespace Appearance
 			return false;
 		}
 
+		if (strike && (now < player->upperBodyEndSeconds))
+		{
+			return false;
+		}
+
 		// A sword swings from the hand, so a strike takes it from the hip first, before the server has said the fight began.
 		const bool sword = strike && wieldsSword(body);
 		if (sword)
@@ -1674,6 +1697,21 @@ namespace Appearance
 		if (clip == nullptr)
 		{
 			return false;
+		}
+
+		// Moving, a strike plays from the spine up and the legs keep walking, so the body does not slide along in a standing swing.
+		if (strike && player->moving)
+		{
+			player->playUpperBody(clip, 0.0f);
+			player->upperBodyEndSeconds = now + clip->GetPlayLength();
+			return true;
+		}
+
+		// A fall takes the whole body, so a strike still playing from the spine up stops with it.
+		if (action == EAction::Fall)
+		{
+			player->playUpperBody(nullptr, 0.0f);
+			player->upperBodyEndSeconds = 0.0;
 		}
 
 		// A strike accepted after the last one ends starts at the top even when it uses the same clip.
@@ -1700,6 +1738,8 @@ namespace Appearance
 			player->fallen = false;
 			player->actionEndSeconds = 0.0;
 			player->strikeAction = false;
+			player->upperBodyEndSeconds = 0.0;
+			player->playUpperBody(nullptr, 0.0f);
 		}
 	}
 

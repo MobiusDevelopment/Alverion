@@ -1,5 +1,8 @@
 #include "Appearance/FootIkAnimInstance.h"
 
+#include "Animation/AnimSequenceBase.h"
+#include "Animation/AnimationPoseData.h"
+#include "Animation/AttributesRuntime.h"
 #include "BonePose.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
@@ -12,6 +15,10 @@ namespace
 {
 	constexpr float MOTION_BLEND_SECONDS = 0.14f;
 	constexpr float ACTION_BLEND_SECONDS = 0.08f;
+
+	// A one-off from the spine up fades in quickly and hands back to the moving clip over its last moment.
+	constexpr float UPPER_BODY_BLEND_IN_SECONDS = 0.08f;
+	constexpr float UPPER_BODY_BLEND_OUT_SECONDS = 0.15f;
 
 	// How far above and below the body's feet a foot looks for ground.
 	constexpr double footIkReachCm = 45.0;
@@ -43,6 +50,7 @@ bool FFootIkAnimInstanceProxy::Evaluate(FPoseContext& output)
 {
 	FAnimSingleNodeInstanceProxy::Evaluate(output);
 	_hasEvaluatedPose = true;
+	layerUpperBody(output);
 
 	if (!FMath::IsNearlyEqual(headScale, 1.0f))
 	{
@@ -174,6 +182,45 @@ void FFootIkAnimInstanceProxy::blendPose(FPoseContext& output) const
 	}
 }
 
+void FFootIkAnimInstanceProxy::layerUpperBody(FPoseContext& output) const
+{
+	if ((upperBodyClip == nullptr) || (upperBodyWeight <= 0.0f))
+	{
+		return;
+	}
+
+	FCompactPose upper;
+	upper.SetBoneContainer(&output.Pose.GetBoneContainer());
+	FBlendedCurve curve;
+	curve.InitFrom(output.Curve);
+	UE::Anim::FStackAttributeContainer attributes;
+	FAnimationPoseData upperData(upper, curve, attributes);
+	upperBodyClip->GetAnimationPose(upperData, FAnimExtractContext(static_cast<double>(upperBodyTime)));
+
+	// A bone takes the one-off when it is the first spine bone or hangs below it in the chain; the pelvis and legs keep the moving clip.
+	static const FName spineName(TEXT("spine_01"));
+	const FBoneContainer& bones = output.Pose.GetBoneContainer();
+	const FReferenceSkeleton& skeleton = bones.GetReferenceSkeleton();
+	TArray<bool, TInlineAllocator<512>> upperBones;
+	upperBones.SetNumZeroed(output.Pose.GetNumBones());
+	for (const FCompactPoseBoneIndex bone : output.Pose.ForEachBoneIndex())
+	{
+		const FCompactPoseBoneIndex parent = bones.GetParentBoneIndex(bone);
+		const bool upperBone = (skeleton.GetBoneName(bones.MakeMeshPoseIndex(bone).GetInt()) == spineName) || (parent.IsValid() && upperBones[parent.GetInt()]);
+		upperBones[bone.GetInt()] = upperBone;
+		if (upperBone)
+		{
+			output.Pose[bone].BlendWith(upper[bone], upperBodyWeight);
+		}
+	}
+}
+
+void UFootIkAnimInstance::playUpperBody(UAnimSequenceBase* clip, float startSeconds)
+{
+	_upperBodyClip = clip;
+	_upperBodyTime = startSeconds;
+}
+
 void UFootIkAnimInstance::SetAnimationAsset(UAnimationAsset* asset, bool looping, float playRate)
 {
 	FFootIkAnimInstanceProxy& proxy = GetProxyOnGameThread<FFootIkAnimInstanceProxy>();
@@ -208,6 +255,26 @@ void UFootIkAnimInstance::NativeUpdateAnimation(float deltaSeconds)
 {
 	Super::NativeUpdateAnimation(deltaSeconds);
 	FFootIkAnimInstanceProxy& shaping = GetProxyOnGameThread<FFootIkAnimInstanceProxy>();
+
+	// The one-off from the spine up runs on its own clock, apart from the clip below it.
+	float upperBodyWeight = 0.0f;
+	if (_upperBodyClip != nullptr)
+	{
+		_upperBodyTime += deltaSeconds;
+		const float length = _upperBodyClip->GetPlayLength();
+		if (_upperBodyTime >= length)
+		{
+			_upperBodyClip = nullptr;
+		}
+		else
+		{
+			upperBodyWeight = FMath::Min(FMath::Min(_upperBodyTime / UPPER_BODY_BLEND_IN_SECONDS, 1.0f), FMath::Min((length - _upperBodyTime) / UPPER_BODY_BLEND_OUT_SECONDS, 1.0f));
+		}
+	}
+
+	shaping.upperBodyClip = _upperBodyClip;
+	shaping.upperBodyTime = _upperBodyTime;
+	shaping.upperBodyWeight = upperBodyWeight;
 	shaping.lift = lift;
 	shaping.headScale = 1.0f;
 	shaping.fallen = fallen;

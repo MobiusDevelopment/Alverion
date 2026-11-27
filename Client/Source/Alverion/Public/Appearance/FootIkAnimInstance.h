@@ -49,10 +49,18 @@ struct FFootIkAnimInstanceProxy : public FAnimSingleNodeInstanceProxy
 	int32 soleLod = INDEX_NONE;
 	TWeakObjectPtr<USkeletalMesh> unavailableSoleMesh;
 
+	/** A one-off playing from the spine up while the legs keep the clip below, how far into it, and how much of it shows. */
+	const UAnimSequenceBase* upperBodyClip = nullptr;
+	float upperBodyTime = 0.0f;
+	float upperBodyWeight = 0.0f;
+
 private:
 	friend class UFootIkAnimInstance;
 
 	void blendPose(FPoseContext& output) const;
+
+	/** Lays the one-off over every bone from the first spine bone up. */
+	void layerUpperBody(FPoseContext& output) const;
 
 	TArray<FTransform> _blendSource;
 	float _blendDuration = 0.0f;
@@ -85,9 +93,23 @@ public:
 	/** Fallen, which holds the fall's last pose until the body gets up. */
 	bool fallen = false;
 
+	/** Moving over land, set by the body's motion each frame, which is when a strike plays from the spine up. */
+	bool moving = false;
+
+	/** When the one-off playing from the spine up ends, in world seconds. */
+	double upperBodyEndSeconds = 0.0;
+
+	/** Plays a one-off from the spine up, this far into it, while the clip playing goes on below the waist. */
+	void playUpperBody(UAnimSequenceBase* clip, float startSeconds);
 
 protected:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float deltaSeconds) override;
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
+
+private:
+	UPROPERTY()
+	TObjectPtr<UAnimSequenceBase> _upperBodyClip;
+
+	float _upperBodyTime = 0.0f;
 };
