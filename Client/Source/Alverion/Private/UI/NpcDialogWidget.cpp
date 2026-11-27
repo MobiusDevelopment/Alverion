@@ -429,6 +429,18 @@ void UNpcDialogWidget::follow(NpcHtml::ELinkKind kind, const FString& target)
 	}
 }
 
+void UNpcDialogWidget::NativeOnDeactivated()
+{
+	Super::NativeOnDeactivated();
+
+	UGameInstance* gameInstance = GetGameInstance();
+	UServerConnectionSubsystem* connection = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	if (connection != nullptr)
+	{
+		connection->world().cancelTarget();
+	}
+}
+
 UWidget* UNpcDialogWidget::NativeGetDesiredFocusTarget() const
 {
 	return _closeButton;

@@ -55,6 +55,9 @@ public:
 protected:
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 
+	/** Closing the dialog, however it closes, lets go of the townsperson, so their health bar goes with it. */
+	virtual void NativeOnDeactivated() override;
+
 	/** Menu and game input together, so the cursor works the dialog and the movement keys still walk the character, as with the stock client. */
 	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
 

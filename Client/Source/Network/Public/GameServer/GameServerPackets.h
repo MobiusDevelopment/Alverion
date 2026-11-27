@@ -46,3 +46,4 @@
 #include "GameServer/ClientPackets/RequestDestroyItem.h"
 #include "GameServer/ClientPackets/RequestRestartPoint.h"
 #include "GameServer/ClientPackets/RequestCorpseLoot.h"
+#include "GameServer/ClientPackets/RequestTargetCanceld.h"

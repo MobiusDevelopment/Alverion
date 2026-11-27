@@ -395,6 +395,7 @@ namespace Opcode
 	inline constexpr uint8 appearing = 0x3A;
 	inline constexpr uint8 requestShortcutReg = 0x3D;
 	inline constexpr uint8 requestShortcutDel = 0x3F;
+	inline constexpr uint8 requestTargetCanceld = 0x48;
 	inline constexpr uint8 say2 = 0x49;
 	inline constexpr uint8 requestRestart = 0x57;
 	inline constexpr uint8 validatePosition = 0x59;

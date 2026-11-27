@@ -123,6 +123,9 @@ public:
 	/** What the server says this client has selected. Zero for nothing. */
 	uint32 targetObjectId() const;
 
+	/** Drops the selection, here at once and on the server, which confirms with TargetUnselected. Nothing goes out outside the world. */
+	bool cancelTarget();
+
 	/** The health the server last gave for a creature, which it gives for whatever this client has selected and fights. False when it gave none. */
 	bool healthOf(uint32 objectId, int32& current, int32& maximum) const;
 

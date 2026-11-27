@@ -247,6 +247,21 @@ uint32 FWorldFlow::targetObjectId() const
 	return _targetObjectId;
 }
 
+bool FWorldFlow::cancelTarget()
+{
+	if (!canSend() || (_targetObjectId == 0))
+	{
+		return false;
+	}
+
+	_targetObjectId = 0;
+
+	FWriteBuffer buffer;
+	GameServer::writeRequestTargetCanceld(buffer);
+	_gameServer->session()->send(buffer.bytes());
+	return true;
+}
+
 bool FWorldFlow::healthOf(uint32 objectId, int32& current, int32& maximum) const
 {
 	const TPair<int32, int32>* health = _health.Find(objectId);
@@ -569,8 +584,9 @@ void FWorldFlow::handlePacket(uint32 opcode, TArrayView<const uint8> body)
 		}
 		case GameServer::Opcode::targetUnselected:
 		{
+			// Sent to everyone near whoever let go, naming them, so only this client's own id is about its own target.
 			uint32 objectId = 0;
-			if (GameServer::readTargetUnselected(buffer, objectId) && (objectId == _targetObjectId))
+			if (GameServer::readTargetUnselected(buffer, objectId) && (objectId == _localObjectId))
 			{
 				_targetObjectId = 0;
 			}

@@ -278,6 +278,13 @@ void AClientPlayerController::toggleGameMenu()
 		return;
 	}
 
+	// With nothing on screen a selection goes first: Escape lets go of the target, and only a press with nothing selected opens the menu.
+	UServerConnectionSubsystem* connection = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	if ((connection != nullptr) && connection->world().cancelTarget())
+	{
+		return;
+	}
+
 	openScreen(UGameMenuWidget::StaticClass());
 }
 
@@ -323,6 +330,14 @@ void AClientPlayerController::showLoot(const Network::FCorpseLoot& loot, const F
 	if (!open)
 	{
 		_loot = Cast<ULootWidget>(openScreen(ULootWidget::StaticClass()));
+
+		// Looting lets go of the fallen creature, so its empty health bar goes; the server finds the corpse by its id, not by the selection.
+		UGameInstance* gameInstance = GetGameInstance();
+		UServerConnectionSubsystem* connection = (gameInstance != nullptr) ? gameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+		if (connection != nullptr)
+		{
+			connection->world().cancelTarget();
+		}
 	}
 
 	if (_loot.IsValid())

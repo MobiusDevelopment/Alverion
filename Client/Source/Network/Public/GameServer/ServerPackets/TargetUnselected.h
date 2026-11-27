@@ -6,7 +6,7 @@ namespace Network
 {
 namespace GameServer
 {
-/** The server cleared this client's target. The object it carries is the one that was selected. */
+/** Somebody let go of their target. The object it carries is the one who let go, so this client's own id means its own target is gone. */
 inline bool readTargetUnselected(FReadBuffer& buffer, uint32& objectId)
 {
 	int32 value = 0;

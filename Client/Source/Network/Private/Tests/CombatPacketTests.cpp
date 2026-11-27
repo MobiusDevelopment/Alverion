@@ -130,6 +130,18 @@ bool FCombatPacketsTest::RunTest(const FString& parameters)
 	TestEqual(TEXT("The stack's place"), takeIndex, 1);
 	TestEqual(TEXT("And its item"), takeItem, 30001);
 	TestEqual(TEXT("Nothing after the item"), takeReader.remaining(), 0);
+
+	// Letting go of the target: one, which drops it without cancelling a spell being cast.
+	Network::FWriteBuffer cancel;
+	Network::GameServer::writeRequestTargetCanceld(cancel);
+	Network::FReadBuffer cancelReader(cancel.bytes());
+	uint8 cancelOpcode = 0;
+	int16 unselect = 0;
+	cancelReader.readUInt8(cancelOpcode);
+	cancelReader.readInt16(unselect);
+	TestEqual(TEXT("RequestTargetCanceld opcode"), static_cast<int32>(cancelOpcode), 0x48);
+	TestEqual(TEXT("Drop the target, keep the cast"), static_cast<int32>(unselect), 1);
+	TestEqual(TEXT("Nothing after it"), cancelReader.remaining(), 0);
 	return true;
 }
 
