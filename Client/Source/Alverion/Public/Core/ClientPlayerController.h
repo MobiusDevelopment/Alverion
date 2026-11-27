@@ -43,6 +43,7 @@ private:
 
 	/**
 	 * The attack key swings at the monster in reach where the camera looks, which the server then fights until it falls or the character moves.
+	 * Held, it swings again whenever the last swing's animation is over.
 	 * With nothing in reach it swings at the air, and a fallen character is asked again whether to go back to the village.
 	 */
 	void attack();

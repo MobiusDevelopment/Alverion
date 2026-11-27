@@ -184,7 +184,8 @@ void AClientPlayerController::SetupInputComponent()
 	const UInputAction* attackAction = (bootstrap != nullptr) ? bootstrap->getAttackAction() : nullptr;
 	if (attackAction != nullptr)
 	{
-		enhancedInput->BindAction(attackAction, ETriggerEvent::Started, this, &AClientPlayerController::attack);
+		// Every frame the key is held, so holding it attacks again as soon as the last swing's animation is over.
+		enhancedInput->BindAction(attackAction, ETriggerEvent::Triggered, this, &AClientPlayerController::attack);
 	}
 
 	// The action bar's keys, each using what its slot points at.
