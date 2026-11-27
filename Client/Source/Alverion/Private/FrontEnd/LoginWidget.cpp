@@ -67,9 +67,14 @@ namespace
 	// The earlier half screen panel was the point of the 3D front end fighting its own UI.
 	constexpr FLinearColor loginWashColor = FLinearColor(0.01f, 0.01f, 0.015f, 0.20f);
 
-	// The column is a fixed width block, centred, rather than anything anchored to an edge.
-	// Left anchoring meant the whole screen slid sideways the moment the window was resized.
+	/**
+	 * The column is a fixed width block, centred across, rather than anchored to a side edge.
+	 * Left anchoring meant the whole screen slid sideways the moment the window was resized.
+	 */
 	constexpr float loginColumnWidth = 520.0f;
+
+	// Standing on the grass in the lower part of the harbour view, clear of the bright water, and above the status line.
+	constexpr float loginColumnBottomPad = 190.0f;
 
 	// A touch lighter than the shared label colour, and spaced out the same way the intro's name is.
 	constexpr FLinearColor titleColor = FLinearColor(0.95f, 0.93f, 0.86f, 1.0f);
@@ -90,14 +95,16 @@ namespace
 	// The asset set no size on the credential labels, which lands on the engine default.
 	constexpr int32 credentialFontSize = 15;
 	constexpr float credentialLabelWidth = 110.0f;
-	constexpr FLinearColor credentialLabelRim = FLinearColor(0.4f, 0.4f, 0.42f, 1.0f);
+	constexpr FLinearColor credentialLabelInk = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	constexpr FLinearColor credentialLabelRim = FLinearColor(1.0f, 1.0f, 1.0f, 0.45f);
 
 	// Light ink over a dark translucent fill, so the fields sit in the same family as the buttons.
 	// The stock light grey boxes read as placeholders against the styled frame around them.
 	constexpr FLinearColor textBoxInk = FLinearColor(0.92f, 0.90f, 0.85f, 1.0f);
 	constexpr FLinearColor textBoxReadOnlyInk = FLinearColor(0.55f, 0.54f, 0.50f, 1.0f);
-	constexpr FLinearColor textBoxFill = FLinearColor(0.02f, 0.03f, 0.04f, 0.62f);
-	constexpr FLinearColor textBoxFillFocused = FLinearColor(0.04f, 0.05f, 0.07f, 0.78f);
+	// Opaque enough that the light ink still reads over the bright harbour water behind the fields.
+	constexpr FLinearColor textBoxFill = FLinearColor(0.02f, 0.03f, 0.04f, 0.82f);
+	constexpr FLinearColor textBoxFillFocused = FLinearColor(0.04f, 0.05f, 0.07f, 0.9f);
 
 	// Grey rather than the buttons' brown, because a field is not a thing to press.
 	// Without one, a dark translucent fill over a dark scene leaves nothing saying where to type.
@@ -158,12 +165,12 @@ namespace
 
 		UTextBlock* label = tree.ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName(labelName));
 
-		// A mid grey rim, since these stand on the bright sky rather than on a panel: a light one blurs the letters, a black one is too heavy.
+		// Black ink, since these stand on the bright harbour water rather than on a panel, with a faint light rim for when a darker wall is behind them.
 		FSlateFontInfo labelFont = UIStyle::font(credentialFontSize);
 		labelFont.OutlineSettings.OutlineSize = 1;
 		labelFont.OutlineSettings.OutlineColor = credentialLabelRim;
 		label->SetFont(labelFont);
-		label->SetColorAndOpacity(FSlateColor(UIStyle::labelColor));
+		label->SetColorAndOpacity(FSlateColor(credentialLabelInk));
 		label->SetMinDesiredWidth(credentialLabelWidth);
 		label->SetJustification(ETextJustify::Right);
 
@@ -222,7 +229,8 @@ TSharedRef<SWidget> ULoginWidget::RebuildWidget()
 
 		UOverlaySlot* columnSlot = root->AddChildToOverlay(columnBox);
 		columnSlot->SetHorizontalAlignment(HAlign_Center);
-		columnSlot->SetVerticalAlignment(VAlign_Center);
+		columnSlot->SetVerticalAlignment(VAlign_Bottom);
+		columnSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, loginColumnBottomPad));
 
 		// The game's name is a literal, not a table entry. It reads the same in every language.
 		UTextBlock* title = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());

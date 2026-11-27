@@ -27,33 +27,34 @@ namespace
 	const TCHAR* const mapActionPath = TEXT("/Game/Input/Actions/IA_Map.IA_Map");
 
 	/**
-	 * The continent filmed straight down, north up, east to the right, by a bake of L_Continent's terrain.
-	 * The picture covers exactly this stretch of the world, in centimetres; bake again and these change with it.
+	 * L_Continent filmed straight down, north up, east to the right: the terrain, buildings, trees and ships, but no characters,
+	 * which only exist once the server spawns them. 16 orthographic tiles stitched into one 8192 square picture.
+	 * The picture covers exactly this square of the world, in centimetres; bake again and these change with it.
 	 */
 	const TCHAR* const mapTexturePath = TEXT("/Game/UI/Map/T_ContinentMap.T_ContinentMap");
 	constexpr double mapWorldMinX = -508010.0;
-	constexpr double mapWorldMinY = 827990.0;
+	constexpr double mapWorldMinY = 815990.0;
 	constexpr double mapWorldMaxX = -255990.0;
-	constexpr double mapWorldMaxY = 1056010.0;
+	constexpr double mapWorldMaxY = 1068010.0;
 
-	// The picture's size on screen before it is shrunk to fit, in the texture's own proportions of 2048 by 1853.
+	// The picture's size on screen before it is shrunk to fit; square, like the picture.
 	constexpr float mapDesignWidth = 1000.0f;
-	constexpr float mapDesignHeight = mapDesignWidth * (1853.0f / 2048.0f);
+	constexpr float mapDesignHeight = mapDesignWidth;
+
+	// The wheel magnifies by this much a notch, up to the most the picture's detail holds.
+	constexpr float mapZoomStep = 1.25f;
+	constexpr float mapZoomMax = 8.0f;
 
 	constexpr FLinearColor mapBackdropColor = FLinearColor(0.01f, 0.01f, 0.015f, 0.55f);
 	constexpr FLinearColor mapPanelFill = FLinearColor(0.035f, 0.03f, 0.028f, 0.94f);
 	constexpr FLinearColor mapHeadingColor = FLinearColor(0.86f, 0.68f, 0.36f, 1.0f);
-	constexpr FLinearColor mapMarkerColor = FLinearColor(1.0f, 0.78f, 0.25f, 1.0f);
-	constexpr FLinearColor mapMarkerRim = FLinearColor(0.05f, 0.04f, 0.03f, 1.0f);
 	constexpr float mapPanelRadius = 8.0f;
 	constexpr float mapPanelPadding = 16.0f;
 	constexpr int32 mapHeadingFontSize = 20;
 
-	// The marker: a dot where the player stands with a short pointer the way they face, all turned together.
-	constexpr float mapMarkerSize = 28.0f;
-	constexpr float mapMarkerDot = 12.0f;
-	constexpr float mapMarkerPointerLength = 9.0f;
-	constexpr float mapMarkerPointerThickness = 4.0f;
+	// The marker: a gold arrow drawn pointing right at no turn, which is east, the way a yaw of zero faces.
+	const TCHAR* const mapMarkerTexturePath = TEXT("/Game/UI/Map/T_MapMarkerArrow.T_MapMarkerArrow");
+	constexpr float mapMarkerSize = 30.0f;
 }
 
 TSharedRef<SWidget> UMapWidget::RebuildWidget()
@@ -93,10 +94,13 @@ TSharedRef<SWidget> UMapWidget::RebuildWidget()
 		UVerticalBoxSlot* headingSlot = column->AddChildToVerticalBox(heading);
 		headingSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 10.0f));
 
+		// Clipped, so a magnified picture shows only the part inside the frame.
 		USizeBox* frame = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 		frame->SetWidthOverride(mapDesignWidth);
 		frame->SetHeightOverride(mapDesignHeight);
+		frame->SetClipping(EWidgetClipping::ClipToBounds);
 		column->AddChildToVerticalBox(frame);
+		_frame = frame;
 
 		UOverlay* layers = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		frame->AddChild(layers);
@@ -116,34 +120,26 @@ TSharedRef<SWidget> UMapWidget::RebuildWidget()
 		pictureSlot->SetHorizontalAlignment(HAlign_Fill);
 		pictureSlot->SetVerticalAlignment(VAlign_Fill);
 
-		// The marker rides a canvas the picture's own size, so a place on the map is a place on the canvas.
+		// Zoom scales the picture from its top left corner, and pan moves that corner.
+		picture->SetRenderTransformPivot(FVector2D::ZeroVector);
+		_picture = picture;
+
+		// The marker rides an unscaled canvas the frame's size, placed through the zoom and pan, so it keeps its size.
 		UCanvasPanel* canvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass());
 		UOverlaySlot* canvasSlot = layers->AddChildToOverlay(canvas);
 		canvasSlot->SetHorizontalAlignment(HAlign_Fill);
 		canvasSlot->SetVerticalAlignment(VAlign_Fill);
 
-		UOverlay* marker = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
-
-		USizeBox* dotBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		dotBox->SetWidthOverride(mapMarkerDot);
-		dotBox->SetHeightOverride(mapMarkerDot);
-		UBorder* dot = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		dot->SetBrush(UIStyle::stateBrush(mapMarkerColor, mapMarkerRim, mapMarkerDot * 0.5f));
-		dotBox->AddChild(dot);
-		UOverlaySlot* dotSlot = marker->AddChildToOverlay(dotBox);
-		dotSlot->SetHorizontalAlignment(HAlign_Center);
-		dotSlot->SetVerticalAlignment(VAlign_Center);
-
-		// Pointing right at no turn, which is east, the way a yaw of zero faces.
-		USizeBox* pointerBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		pointerBox->SetWidthOverride(mapMarkerPointerLength);
-		pointerBox->SetHeightOverride(mapMarkerPointerThickness);
-		UBorder* pointer = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		pointer->SetBrush(UIStyle::stateBrush(mapMarkerColor, mapMarkerRim, 1.0f));
-		pointerBox->AddChild(pointer);
-		UOverlaySlot* pointerSlot = marker->AddChildToOverlay(pointerBox);
-		pointerSlot->SetHorizontalAlignment(HAlign_Right);
-		pointerSlot->SetVerticalAlignment(VAlign_Center);
+		UImage* marker = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		UTexture2D* markerTexture = LoadObject<UTexture2D>(nullptr, mapMarkerTexturePath);
+		if (markerTexture != nullptr)
+		{
+			marker->SetBrushFromTexture(markerTexture, false);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("MapWidget could not load %s, so the player marker is blank."), mapMarkerTexturePath);
+		}
 
 		_marker = marker;
 		_markerSlot = canvas->AddChildToCanvas(marker);
@@ -187,7 +183,7 @@ void UMapWidget::placeMarker()
 	const FVector location = pawn->GetActorLocation();
 	const double across = FMath::Clamp((location.X - mapWorldMinX) / (mapWorldMaxX - mapWorldMinX), 0.0, 1.0);
 	const double down = FMath::Clamp((location.Y - mapWorldMinY) / (mapWorldMaxY - mapWorldMinY), 0.0, 1.0);
-	_markerSlot->SetPosition(FVector2D(across * mapDesignWidth, down * mapDesignHeight));
+	_markerSlot->SetPosition(_offset + FVector2D(across * mapDesignWidth, down * mapDesignHeight) * _zoom);
 
 	// Yaw turns clockwise seen from above, and so does a widget's angle, with both at zero facing east.
 	_marker->SetRenderTransformAngle(pawn->GetActorRotation().Yaw);
@@ -223,4 +219,80 @@ FReply UMapWidget::NativeOnKeyDown(const FGeometry& geometry, const FKeyEvent& k
 	}
 
 	return Super::NativeOnKeyDown(geometry, keyEvent);
+}
+
+FReply UMapWidget::NativeOnMouseWheel(const FGeometry& geometry, const FPointerEvent& mouseEvent)
+{
+	if ((_frame == nullptr) || (_picture == nullptr))
+	{
+		return Super::NativeOnMouseWheel(geometry, mouseEvent);
+	}
+
+	// The map point under the cursor stays under it, so the wheel zooms toward whatever it points at.
+	const FVector2D local = _frame->GetCachedGeometry().AbsoluteToLocal(mouseEvent.GetScreenSpacePosition());
+	const FVector2D cursor(FMath::Clamp(local.X, 0.0, static_cast<double>(mapDesignWidth)), FMath::Clamp(local.Y, 0.0, static_cast<double>(mapDesignHeight)));
+	const float zoom = FMath::Clamp(_zoom * FMath::Pow(mapZoomStep, mouseEvent.GetWheelDelta()), 1.0f, mapZoomMax);
+	_offset = cursor - (cursor - _offset) * (zoom / _zoom);
+	_zoom = zoom;
+	applyView();
+	return FReply::Handled();
+}
+
+FReply UMapWidget::NativeOnMouseButtonDown(const FGeometry& geometry, const FPointerEvent& mouseEvent)
+{
+	if ((mouseEvent.GetEffectingButton() != EKeys::LeftMouseButton) || (_frame == nullptr))
+	{
+		return Super::NativeOnMouseButtonDown(geometry, mouseEvent);
+	}
+
+	_dragging = true;
+	_dragLast = mouseEvent.GetScreenSpacePosition();
+	return FReply::Handled().CaptureMouse(TakeWidget());
+}
+
+FReply UMapWidget::NativeOnMouseMove(const FGeometry& geometry, const FPointerEvent& mouseEvent)
+{
+	if (!_dragging || (_frame == nullptr))
+	{
+		return Super::NativeOnMouseMove(geometry, mouseEvent);
+	}
+
+	// Measured in the frame's own units, so the picture follows the cursor however much the panel was shrunk to fit.
+	const FGeometry& frameGeometry = _frame->GetCachedGeometry();
+	_offset += frameGeometry.AbsoluteToLocal(mouseEvent.GetScreenSpacePosition()) - frameGeometry.AbsoluteToLocal(_dragLast);
+	_dragLast = mouseEvent.GetScreenSpacePosition();
+	applyView();
+	return FReply::Handled();
+}
+
+FReply UMapWidget::NativeOnMouseButtonUp(const FGeometry& geometry, const FPointerEvent& mouseEvent)
+{
+	if (!_dragging || (mouseEvent.GetEffectingButton() != EKeys::LeftMouseButton))
+	{
+		return Super::NativeOnMouseButtonUp(geometry, mouseEvent);
+	}
+
+	_dragging = false;
+	return FReply::Handled().ReleaseMouseCapture();
+}
+
+void UMapWidget::NativeOnMouseCaptureLost(const FCaptureLostEvent& captureLostEvent)
+{
+	Super::NativeOnMouseCaptureLost(captureLostEvent);
+
+	_dragging = false;
+}
+
+void UMapWidget::applyView()
+{
+	// The picture never shows a gap: at any zoom its edges stay at or past the frame's.
+	_offset.X = FMath::Clamp(_offset.X, static_cast<double>(mapDesignWidth * (1.0f - _zoom)), 0.0);
+	_offset.Y = FMath::Clamp(_offset.Y, static_cast<double>(mapDesignHeight * (1.0f - _zoom)), 0.0);
+
+	FWidgetTransform transform;
+	transform.Translation = _offset;
+	transform.Scale = FVector2D(_zoom, _zoom);
+	_picture->SetRenderTransform(transform);
+
+	placeMarker();
 }
