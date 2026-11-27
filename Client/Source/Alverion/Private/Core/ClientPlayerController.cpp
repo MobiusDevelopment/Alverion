@@ -61,6 +61,19 @@ void AClientPlayerController::PlayerTick(float deltaSeconds)
 		}
 	}
 
+	// Walking away from a selected townsperson lets go of them, at the range a dialog with them would close; a monster stays selected for the fight.
+	UGameInstance* targetGameInstance = GetGameInstance();
+	UServerConnectionSubsystem* targetConnection = (targetGameInstance != nullptr) ? targetGameInstance->GetSubsystem<UServerConnectionSubsystem>() : nullptr;
+	UWorld* targetWorld = GetWorld();
+	const AWorldGameMode* targetMode = (targetWorld != nullptr) ? targetWorld->GetAuthGameMode<AWorldGameMode>() : nullptr;
+	const APawn* walker = GetPawn();
+	const uint32 target = (targetConnection != nullptr) ? targetConnection->world().targetObjectId() : 0;
+	double targetDistance = 0.0;
+	if ((target != 0) && (targetMode != nullptr) && (walker != nullptr) && targetMode->isTownsperson(target) && targetMode->distanceToCreature(target, *walker, targetDistance) && (targetDistance > dialogLeaveRangeCm))
+	{
+		targetConnection->world().cancelTarget();
+	}
+
 	if (_dialogObjectId == 0)
 	{
 		return;

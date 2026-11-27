@@ -446,6 +446,12 @@ bool AWorldGameMode::distanceToCreature(uint32 objectId, const AActor& from, dou
 	return true;
 }
 
+bool AWorldGameMode::isTownsperson(uint32 objectId) const
+{
+	const TObjectPtr<AProxyCharacter>* proxy = _proxies.Find(objectId);
+	return (proxy != nullptr) && (*proxy != nullptr) && (*proxy)->isTownsperson();
+}
+
 void AWorldGameMode::spawned(const Network::FCharacterSpawn& spawn)
 {
 	// A spawn for somebody already here is the server repeating itself, so the existing one is moved and dressed again.

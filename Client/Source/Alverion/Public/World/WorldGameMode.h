@@ -33,6 +33,9 @@ public:
 	/** How far a creature the server has told this client about stands from the actor, flat, in centimetres. False when the creature is not one it knows. */
 	bool distanceToCreature(uint32 objectId, const AActor& from, double& distanceCm) const;
 
+	/** Whether the creature is a townsperson, someone to talk to rather than fight. False for anyone this client has not been told of. */
+	bool isTownsperson(uint32 objectId) const;
+
 	/**
 	 * The monster a swing from the place given, towards the direction given, would reach: the nearest standing one within reach and in front.
 	 * Returns zero when there is none. Townspeople and players are never picked.
